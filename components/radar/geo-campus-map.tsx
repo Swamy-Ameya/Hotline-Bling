@@ -21,9 +21,7 @@ import {
   Maximize2,
   Trash2,
   X,
-  Layers,
-  Box,
-  Sparkles
+  Layers
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,17 +38,16 @@ export interface StampedLocation {
   blockKey?: string;
   lat: number;
   lng: number;
-  floors?: number;
 }
 
 // Clean MUJ GHS Hostel & Mess positions
 const MUJ_SATELLITE_DEFAULTS: StampedLocation[] = [
-  { id: 'mess', name: 'Old Mess & Central Dining', shortLabel: 'Old Mess', type: 'mess', lat: 26.84365, lng: 75.56580, floors: 2 },
-  { id: 'tank-A', blockKey: 'A', name: 'Hostel Block A', shortLabel: 'Block A', type: 'block', lat: 26.84370, lng: 75.56370, floors: 5 },
-  { id: 'tank-B', blockKey: 'B', name: 'Hostel Block B', shortLabel: 'Block B', type: 'block', lat: 26.84390, lng: 75.56445, floors: 5 },
-  { id: 'tank-C', blockKey: 'C', name: 'Hostel Block C', shortLabel: 'Block C', type: 'block', lat: 26.84275, lng: 75.56360, floors: 5 },
-  { id: 'tank-D', blockKey: 'D', name: 'Hostel Block D', shortLabel: 'Block D', type: 'block', lat: 26.84260, lng: 75.56450, floors: 5 },
-  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'Main RO Tank', type: 'water', lat: 26.84430, lng: 75.56510, floors: 1 },
+  { id: 'mess', name: 'Old Mess & Central Dining', shortLabel: 'Old Mess', type: 'mess', lat: 26.84365, lng: 75.56580 },
+  { id: 'tank-A', blockKey: 'A', name: 'Hostel Block A', shortLabel: 'Block A', type: 'block', lat: 26.84370, lng: 75.56370 },
+  { id: 'tank-B', blockKey: 'B', name: 'Hostel Block B', shortLabel: 'Block B', type: 'block', lat: 26.84390, lng: 75.56445 },
+  { id: 'tank-C', blockKey: 'C', name: 'Hostel Block C', shortLabel: 'Block C', type: 'block', lat: 26.84275, lng: 75.56360 },
+  { id: 'tank-D', blockKey: 'D', name: 'Hostel Block D', shortLabel: 'Block D', type: 'block', lat: 26.84260, lng: 75.56450 },
+  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'Main RO Tank', type: 'water', lat: 26.84430, lng: 75.56510 },
 ];
 
 function latLngToTile(lat: number, lng: number, zoom: number) {
@@ -76,9 +73,11 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   
-  // Basemap style & 3D Extrusion state
+  // Real Vector / Satellite Map Types:
+  // 'light' = CartoDB Positron Light (Apple/Uber clean style)
+  // 'satellite' = High-Res Google Satellite (No labels)
+  // 'dark' = CartoDB Dark Canvas
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite' | 'dark'>('light');
-  const [is3DExaggerated, setIs3DExaggerated] = useState(true);
 
   // Custom Node Modal Dialog State
   const [isStampModalOpen, setIsStampModalOpen] = useState(false);
@@ -98,7 +97,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v9');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v7');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -108,7 +107,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v9', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v7', JSON.stringify(updated));
     } catch {}
   };
 
@@ -117,7 +116,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v9');
+      localStorage.removeItem('outbreak_radar_geo_pins_v7');
     } catch {}
   };
 
@@ -140,7 +139,6 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         type: stampType,
         lat: userGps.lat,
         lng: userGps.lng,
-        floors: stampType === 'block' ? 5 : stampType === 'mess' ? 2 : 1,
       };
       const updated = [...locations, newNode];
       savePins(updated);
@@ -157,7 +155,6 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
       type: stampType,
       lat: center.lat,
       lng: center.lng,
-      floors: stampType === 'block' ? 5 : stampType === 'mess' ? 2 : 1,
     };
 
     const updated = [...locations, newNode];
@@ -277,7 +274,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     const centerTile = latLngToTile(center.lat, center.lng, zoom);
     const centerPixel = latLngToPixel(center.lat, center.lng, zoom);
     const containerW = mapContainerRef.current ? mapContainerRef.current.clientWidth : 800;
-    const containerH = mapContainerRef.current ? mapContainerRef.current.clientHeight : 540;
+    const containerH = mapContainerRef.current ? mapContainerRef.current.clientHeight : 520;
 
     const tiles = [];
     const radius = 2; // 5x5 tile grid
@@ -293,12 +290,16 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         const screenX = containerW / 2 + (tilePixelX - centerPixel.x);
         const screenY = containerH / 2 + (tilePixelY - centerPixel.y);
 
+        // Real basemaps without negative inversion photo bugs
         let tileUrl = '';
         if (mapStyle === 'light') {
+          // Clean, crisp Apple/Uber style light canvas
           tileUrl = `https://a.basemaps.cartocdn.com/light_nolabels/${zoom}/${tileX}/${tileY}.png`;
         } else if (mapStyle === 'satellite') {
+          // Real photorealistic Google satellite (no labels)
           tileUrl = `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
         } else {
+          // Clean Dark Canvas
           tileUrl = `https://a.basemaps.cartocdn.com/dark_nolabels/${zoom}/${tileX}/${tileY}.png`;
         }
 
@@ -334,33 +335,22 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         <div>
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-md bg-red-600 text-white shadow-xs flex items-center justify-center">
-              <Box className="size-3.5" />
+              <MapPin className="size-3.5" />
             </div>
             <CardTitle className="text-sm sm:text-base font-bold tracking-tight text-zinc-100">
-              3D Raised Campus Buildings &amp; Outbreak Radar
+              Campus Heatmap &amp; Location Stamper
             </CardTitle>
             <Badge variant="outline" className="text-[10px] font-mono border-white/10 text-zinc-400 py-0 h-4">
-              {is3DExaggerated ? '3D Extruded Buildings' : 'Flat Map'}
+              {mapStyle === 'light' ? 'Light Canvas' : mapStyle === 'satellite' ? 'HD Satellite' : 'Dark Canvas'}
             </Badge>
           </div>
           <CardDescription className="text-xs text-zinc-400 mt-0.5">
-            Exaggerated 3D architectural prisms for hostel blocks, dining mess, and plumbing tanks with floor-level outbreak illumination.
+            Georeferenced campus layout with radiant infection heatmaps and manual building stamping.
           </CardDescription>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* 3D Extrusion Toggle */}
-          <Button
-            size="sm"
-            variant={is3DExaggerated ? 'secondary' : 'outline'}
-            onClick={() => setIs3DExaggerated(!is3DExaggerated)}
-            className="text-xs h-7.5 gap-1 border-white/10 text-zinc-200"
-          >
-            <Box className="size-3 text-emerald-400" />
-            <span>3D Height {is3DExaggerated ? 'ON' : 'OFF'}</span>
-          </Button>
-
           {/* Basemap Style Switcher */}
           <div className="p-0.5 rounded-lg bg-zinc-800/90 border border-white/10 flex items-center text-xs">
             <button
@@ -381,7 +371,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Sat
+              Satellite
             </button>
             <button
               onClick={() => setMapStyle('dark')}
@@ -413,7 +403,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             className="text-xs h-7.5 gap-1 border-white/10 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200"
           >
             <Navigation className="size-3 text-blue-400" />
-            <span>GPS</span>
+            <span>My GPS</span>
           </Button>
 
           <Button
@@ -432,7 +422,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         <div className="p-2 rounded-xl bg-zinc-900/80 border border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-300 text-[11px] uppercase tracking-wider">
             <Crosshair className="size-3 text-amber-400" />
-            <span>3D Buildings:</span>
+            <span>Campus Pins:</span>
           </div>
 
           <div className="flex items-center gap-1 flex-wrap">
@@ -475,7 +465,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             <span className="flex items-center gap-1.5">
               <Crosshair className="size-3.5 text-amber-400" />
               <span>
-                <strong>Click anywhere on the map</strong> to stamp/reposition{' '}
+                <strong>Click anywhere on the map</strong> to place{' '}
                 <span className="text-white font-bold underline">
                   {locations.find((l) => l.id === activeStampTarget)?.name}
                 </span>.
@@ -496,7 +486,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           </div>
         )}
 
-        {/* 3D Interactive Map Canvas with Raised Architectural Buildings */}
+        {/* Crisp Map Canvas with Radiant Heatmap Rings */}
         <div
           ref={mapContainerRef}
           onMouseDown={handleMouseDown}
@@ -507,16 +497,62 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             setMousePos(null);
           }}
           onClick={handleMapClick}
-          className={`relative w-full aspect-[16/10] max-h-[540px] rounded-xl overflow-hidden border border-white/[0.08] select-none ${
+          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-white/[0.08] select-none ${
             mapStyle === 'light' ? 'bg-[#f4f3f0]' : 'bg-[#09090b]'
           } shadow-inner ${
             activeStampTarget ? 'cursor-crosshair ring-2 ring-amber-500' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
-          {/* Base Tiles Layer */}
+          {/* Base Tiles (Carto Light, Google Satellite, or Carto Dark) */}
           {renderTiles()}
 
-          {/* 3D RAISED EXTRUDED ARCHITECTURAL BUILDINGS */}
+          {/* VIBRANT RADIANT HEATMAP RINGS */}
+          {locations.map((loc) => {
+            const isBlock = loc.type === 'block';
+            const isMess = loc.type === 'mess';
+            const blockData = isBlock && loc.blockKey
+              ? elevation.blocks.find((b) => b.label.includes(loc.blockKey!))
+              : null;
+
+            const isFlagged = isBlock
+              ? blockData?.isFlagged
+              : isMess
+              ? elevation.mess.isFlagged || result.topCluster?.hypothesis === 'food'
+              : false;
+
+            const cases = isBlock ? blockData?.caseCount ?? 0 : isMess ? elevation.mess.caseCount : 0;
+            const pos = getMarkerScreenPos(loc.lat, loc.lng);
+
+            if (!isFlagged && cases === 0) return null;
+
+            return (
+              <div
+                key={`heat-${loc.id}`}
+                style={{
+                  left: `${pos.x}px`,
+                  top: `${pos.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                className="absolute z-10 pointer-events-none flex items-center justify-center"
+              >
+                {/* Clean, Non-Glitchy Heat Rings */}
+                {isFlagged ? (
+                  <div className="relative flex items-center justify-center">
+                    <span className="w-24 h-24 rounded-full bg-red-500/25 blur-md animate-pulse" />
+                    <span className="absolute w-14 h-14 rounded-full bg-red-600/35 border border-red-500/60" />
+                    <span className="absolute w-10 h-10 rounded-full border-2 border-red-500 animate-ping" />
+                  </div>
+                ) : (
+                  <div className="relative flex items-center justify-center">
+                    <span className="w-14 h-14 rounded-full bg-amber-500/20 blur-sm" />
+                    <span className="absolute w-8 h-8 rounded-full border border-amber-500/50" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Stamped Node Markers with Precision 3D Pin Style */}
           {locations.map((loc) => {
             const isBlock = loc.type === 'block';
             const isMess = loc.type === 'mess';
@@ -536,25 +572,13 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             const isSelected = selectedPinId === loc.id;
             const pos = getMarkerScreenPos(loc.lat, loc.lng);
 
-            // Exaggerated 3D Building Height (pixels)
-            const height = is3DExaggerated
-              ? isBlock
-                ? 56
-                : isMess
-                ? 36
-                : 24
-              : 0;
-
-            const width = isBlock ? 68 : isMess ? 82 : 48;
-            const depth = isBlock ? 42 : isMess ? 50 : 34;
-
             return (
               <div
                 key={loc.id}
                 style={{
                   left: `${pos.x}px`,
                   top: `${pos.y}px`,
-                  transform: 'translate(-50%, -50%)',
+                  transform: 'translate(-50%, -100%)',
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -564,129 +588,49 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                     setSelectedPinId(isSelected ? null : loc.id);
                   }
                 }}
-                className={`absolute z-20 cursor-pointer transition-all duration-200 group flex flex-col items-center select-none ${
-                  isSelected ? 'scale-105' : 'hover:scale-[1.03]'
-                }`}
+                className="absolute z-20 cursor-pointer transition-transform duration-150 group flex flex-col items-center"
               >
-                {/* 3D Cast Drop Shadow */}
-                {is3DExaggerated && (
-                  <div
-                    style={{
-                      width: `${width + 16}px`,
-                      height: `${depth + 10}px`,
-                      transform: 'translate(10px, 14px) skewX(-20deg)',
-                    }}
-                    className="absolute bg-black/40 rounded-xl blur-sm pointer-events-none"
-                  />
-                )}
+                {/* Precision Drop Pin Icon */}
+                <div
+                  className={`relative flex items-center justify-center rounded-full p-1.5 shadow-md border-2 transition-all ${
+                    isSelected ? 'scale-115 ring-2 ring-zinc-950' : 'hover:scale-105'
+                  } ${
+                    isFlagged
+                      ? 'bg-red-600 border-white text-white'
+                      : cases > 0
+                      ? 'bg-amber-500 border-zinc-900 text-zinc-950'
+                      : isMess
+                      ? 'bg-amber-600 border-white text-white'
+                      : isWater
+                      ? 'bg-blue-600 border-white text-white'
+                      : 'bg-zinc-900 border-white text-white'
+                  }`}
+                >
+                  {isMess && <Utensils className="size-3" />}
+                  {isBlock && <Building2 className="size-3" />}
+                  {isWater && <Droplets className="size-3" />}
+                </div>
 
-                {/* 3D Raised Isometric Building Prism */}
-                {is3DExaggerated ? (
-                  <div
-                    style={{ width: `${width}px`, height: `${depth + height}px` }}
-                    className="relative flex flex-col justify-end"
-                  >
-                    {/* Front 3D Extruded Building Wall */}
-                    <div
-                      style={{
-                        height: `${height}px`,
-                        width: `${width}px`,
-                        bottom: '0',
-                      }}
-                      className={`absolute rounded-b-lg border-x border-b shadow-md transition-colors overflow-hidden flex flex-col justify-around py-1 px-1.5 ${
-                        isFlagged
-                          ? 'bg-gradient-to-b from-red-800 to-red-950 border-red-500 shadow-[0_0_24px_rgba(239,68,68,0.5)]'
-                          : cases > 0
-                          ? 'bg-gradient-to-b from-amber-700 to-amber-950 border-amber-500'
-                          : isMess
-                          ? 'bg-gradient-to-b from-zinc-700 to-zinc-900 border-zinc-600'
-                          : isWater
-                          ? 'bg-gradient-to-b from-blue-800 to-blue-950 border-blue-600'
-                          : 'bg-gradient-to-b from-zinc-600 to-zinc-800 border-zinc-500'
-                      }`}
-                    >
-                      {/* Floor Lines & Windows Grid */}
-                      <div className="w-full flex justify-between gap-0.5 opacity-60">
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                      </div>
-                      <div className="w-full flex justify-between gap-0.5 opacity-60">
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                      </div>
-                      <div className="w-full flex justify-between gap-0.5 opacity-60">
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                        <span className="h-1 flex-1 bg-white/40 rounded-xs" />
-                      </div>
-                    </div>
+                {/* Needle Tip */}
+                <div
+                  className={`w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] -mt-0.5 ${
+                    isFlagged
+                      ? 'border-t-red-600'
+                      : cases > 0
+                      ? 'border-t-amber-500'
+                      : isMess
+                      ? 'border-t-amber-600'
+                      : isWater
+                      ? 'border-t-blue-600'
+                      : 'border-t-zinc-900'
+                  }`}
+                />
 
-                    {/* Raised 3D Rooftop Face */}
-                    <div
-                      style={{
-                        width: `${width}px`,
-                        height: `${depth}px`,
-                        top: '0',
-                      }}
-                      className={`absolute rounded-t-lg border-2 shadow-lg flex flex-col items-center justify-center transition-all ${
-                        isSelected ? 'ring-2 ring-white scale-102' : ''
-                      } ${
-                        isFlagged
-                          ? 'bg-red-600 border-white text-white animate-pulse'
-                          : cases > 0
-                          ? 'bg-amber-500 border-white text-zinc-950'
-                          : isMess
-                          ? 'bg-amber-600 border-zinc-200 text-white'
-                          : isWater
-                          ? 'bg-blue-600 border-zinc-200 text-white'
-                          : 'bg-zinc-800 border-zinc-300 text-white'
-                      }`}
-                    >
-                      {/* Rooftop Utility / Tank Icon */}
-                      <div className="flex items-center gap-1 font-bold text-[10px]">
-                        {isMess && <Utensils className="size-3" />}
-                        {isBlock && <Building2 className="size-3" />}
-                        {isWater && <Droplets className="size-3" />}
-                        <span className="tracking-tight">{loc.shortLabel}</span>
-                      </div>
-
-                      {/* Cases / Status Pill on Roof */}
-                      {isFlagged ? (
-                        <span className="mt-0.5 px-1 py-0.2 rounded bg-white text-red-700 text-[8px] font-extrabold tracking-tighter">
-                          OUTBREAK
-                        </span>
-                      ) : cases > 0 ? (
-                        <span className="mt-0.5 px-1 py-0.2 rounded bg-zinc-950 text-amber-400 text-[8px] font-bold">
-                          {formatCases(cases, false)} SICK
-                        </span>
-                      ) : (
-                        <span className="text-[8px] opacity-70 font-mono">
-                          {isBlock ? '5 Floors' : isMess ? 'Shared' : 'RO Tank'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  /* Flat Marker Fallback */
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`p-1.5 rounded-full border-2 shadow-md ${
-                        isFlagged
-                          ? 'bg-red-600 border-white text-white'
-                          : cases > 0
-                          ? 'bg-amber-500 border-zinc-900 text-zinc-950'
-                          : 'bg-zinc-900 border-white text-white'
-                      }`}
-                    >
-                      {isMess ? <Utensils className="size-3" /> : <Building2 className="size-3" />}
-                    </div>
-                    <div className="mt-0.5 px-2 py-0.5 rounded-full bg-zinc-950/90 border border-white/20 text-[10px] font-bold text-zinc-100">
-                      {loc.shortLabel}
-                    </div>
-                  </div>
-                )}
+                {/* Micro Label Tag (High contrast dark pill) */}
+                <div className="mt-0.5 px-2 py-0.5 rounded-full bg-zinc-950/90 backdrop-blur-md border border-white/20 text-[10px] font-mono font-bold text-zinc-100 flex items-center gap-1 shadow-md whitespace-nowrap">
+                  <span>{loc.shortLabel}</span>
+                  {isFlagged && <span className="text-red-400 font-extrabold">• ALERT</span>}
+                </div>
               </div>
             );
           })}
@@ -713,7 +657,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               className="absolute z-40 pointer-events-none px-2 py-0.5 rounded bg-amber-500 text-zinc-950 font-bold text-[10px] shadow-md flex items-center gap-1"
             >
               <MapPin className="size-3" />
-              <span>Click to Drop 3D Building</span>
+              <span>Click to Drop</span>
             </div>
           )}
 
@@ -744,26 +688,26 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           </div>
 
           <div className="absolute left-3 bottom-3 z-30 px-2 py-0.5 rounded-full bg-zinc-950/90 border border-white/20 text-[10px] font-mono text-zinc-300 shadow">
-            3D Elevation View · Zoom {zoom}
+            {center.lat.toFixed(5)}° N, {center.lng.toFixed(5)}° E · Zoom {zoom}
           </div>
         </div>
 
-        {/* Selected 3D Building Inspection Drawer */}
+        {/* Selected Node Details Drawer */}
         {selectedLoc && (
-          <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-white/[0.08] text-xs space-y-3 animate-in fade-in duration-150">
+          <div className="p-3 rounded-xl bg-zinc-900/90 border border-white/[0.08] text-xs space-y-2.5 animate-in fade-in duration-150">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/[0.08]">
               <div className="flex items-center gap-2">
                 {selectedLoc.type === 'mess' ? (
-                  <Utensils className="size-4 text-amber-400" />
+                  <Utensils className="size-3.5 text-amber-400" />
                 ) : selectedLoc.type === 'water' ? (
-                  <Droplets className="size-4 text-blue-400" />
+                  <Droplets className="size-3.5 text-blue-400" />
                 ) : (
-                  <Building2 className="size-4 text-emerald-400" />
+                  <Building2 className="size-3.5 text-emerald-400" />
                 )}
                 <div>
-                  <h4 className="font-bold text-zinc-100 text-sm">{selectedLoc.name}</h4>
-                  <p className="text-[11px] text-zinc-400 font-mono">
-                    3D Elevation: {selectedLoc.floors ?? 5} Stories · Coordinates: {selectedLoc.lat.toFixed(5)}° N, {selectedLoc.lng.toFixed(5)}° E
+                  <h4 className="font-bold text-zinc-100 text-xs">{selectedLoc.name}</h4>
+                  <p className="text-[10px] text-zinc-400 font-mono">
+                    Coordinates: {selectedLoc.lat.toFixed(5)}° N, {selectedLoc.lng.toFixed(5)}° E
                   </p>
                 </div>
               </div>
@@ -773,71 +717,50 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   size="xs"
                   variant="outline"
                   onClick={() => setActiveStampTarget(selectedLoc.id)}
-                  className="h-7 text-xs border-white/10 text-zinc-200"
+                  className="h-6.5 text-[11px] border-white/10 text-zinc-200"
                 >
-                  <Crosshair className="size-3 mr-1" /> Re-Position on Map
+                  <Crosshair className="size-3 mr-1" /> Re-Position
                 </Button>
 
                 <Button
                   size="xs"
                   variant="ghost"
                   onClick={() => handleDeleteNode(selectedLoc.id)}
-                  className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40"
+                  className="h-6.5 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-950/40"
                 >
                   <Trash2 className="size-3 mr-1" /> Delete
                 </Button>
 
                 <Link href={`/radar/${result.scenario}`}>
-                  <Button size="xs" className="h-7 text-xs bg-zinc-100 hover:bg-white text-zinc-950 font-semibold gap-1">
+                  <Button size="xs" className="h-6.5 text-[11px] bg-zinc-100 hover:bg-white text-zinc-950 font-semibold gap-1">
                     <span>Inspect Cluster</span>
-                    <ExternalLink className="size-3" />
+                    <ExternalLink className="size-2.5" />
                   </Button>
                 </Link>
               </div>
             </div>
 
             {selectedBlockData && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
-                    <span className="text-zinc-400 block text-[10px]">Total Cases</span>
-                    <span className="font-bold text-zinc-100 text-xs">
-                      {formatCases(selectedBlockData.caseCount, selectedBlockData.suppressed)}
-                    </span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
-                    <span className="text-zinc-400 block text-[10px]">Attack Rate</span>
-                    <span className="font-bold text-zinc-100 text-xs">
-                      {formatAttackRate(selectedBlockData.attackRate)}
-                    </span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
-                    <span className="text-zinc-400 block text-[10px]">Floors Monitored</span>
-                    <span className="font-bold text-zinc-100 text-xs">5 Floors (10 Filters)</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
-                    <span className="text-zinc-400 block text-[10px]">Plumbing Lineage</span>
-                    <span className="font-bold text-zinc-100 text-xs">{selectedBlockData.tankName}</span>
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
+                  <span className="text-zinc-400 block text-[10px]">Total Cases</span>
+                  <span className="font-bold text-zinc-100 text-xs">
+                    {formatCases(selectedBlockData.caseCount, selectedBlockData.suppressed)}
+                  </span>
                 </div>
-
-                {/* 5-Story Floor Matrix */}
-                <div className="grid grid-cols-5 gap-1.5 pt-1">
-                  {selectedBlockData.floors.map((fl) => (
-                    <div
-                      key={fl.nodeId}
-                      className={`p-2 rounded-lg border text-center text-[10px] flex flex-col justify-between ${
-                        fl.isFlagged
-                          ? 'bg-red-950 border-red-500 text-red-200 font-bold'
-                          : fl.caseCount > 0
-                          ? 'bg-amber-950/60 border-amber-600 text-amber-200'
-                          : 'bg-zinc-950 border-zinc-800 text-zinc-400'
-                      }`}
-                    >
-                      <span>{fl.label}</span>
-                      <span className="font-mono mt-0.5">{formatCases(fl.caseCount, fl.suppressed)} cases</span>
-                    </div>
-                  ))}
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
+                  <span className="text-zinc-400 block text-[10px]">Attack Rate</span>
+                  <span className="font-bold text-zinc-100 text-xs">
+                    {formatAttackRate(selectedBlockData.attackRate)}
+                  </span>
+                </div>
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
+                  <span className="text-zinc-400 block text-[10px]">Floors Monitored</span>
+                  <span className="font-bold text-zinc-100 text-xs">5 Floors (10 Filters)</span>
+                </div>
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
+                  <span className="text-zinc-400 block text-[10px]">Plumbing Tank</span>
+                  <span className="font-bold text-zinc-100 text-xs">{selectedBlockData.tankName}</span>
                 </div>
               </div>
             )}
@@ -854,7 +777,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 <div className="p-1 rounded-md bg-red-600 text-white">
                   <Plus className="size-3.5" />
                 </div>
-                <h3 className="font-bold text-sm">Stamp New 3D Building</h3>
+                <h3 className="font-bold text-sm">Stamp Campus Location</h3>
               </div>
               <button
                 onClick={() => setIsStampModalOpen(false)}
@@ -878,7 +801,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   }`}
                 >
                   <Building2 className="size-4 text-emerald-500" />
-                  <span className="text-[11px]">5-Story Hostel</span>
+                  <span className="text-[11px]">Hostel</span>
                 </button>
 
                 <button
@@ -891,7 +814,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   }`}
                 >
                   <Utensils className="size-4 text-amber-500" />
-                  <span className="text-[11px]">2-Story Mess</span>
+                  <span className="text-[11px]">Mess</span>
                 </button>
 
                 <button
@@ -904,7 +827,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   }`}
                 >
                   <Droplets className="size-4 text-blue-500" />
-                  <span className="text-[11px]">Water Tank</span>
+                  <span className="text-[11px]">Water</span>
                 </button>
               </div>
             </div>
@@ -912,7 +835,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             {/* Name Input */}
             <div className="space-y-1.5">
               <label htmlFor="locName" className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider">
-                2. Building Name / Title:
+                2. Name / Label:
               </label>
               <Input
                 id="locName"
