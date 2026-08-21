@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { detect, mealAssociations, toCaseRow } from '@/lib/detect/engine';
-import { getCampus } from '@/lib/seed/campus';
+import { MESS_ID, getCampus } from '@/lib/seed/campus';
 import { seedScenario } from '@/lib/seed/scenarios';
-import { addIntervention, getStore, setClusterStatus } from '@/lib/store';
+import {
+  addIntervention,
+  getStore,
+  setClusterStatus,
+  type AdvisoryRecord,
+} from '@/lib/store';
 import type { ClusterDetail, Intervention } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -95,6 +100,49 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (action && action in ACTIONS) {
     const status = ACTIONS[action as keyof typeof ACTIONS];
     setClusterStatus(id, status);
+
+    /**
+     * Confirming is what actually sends an advisory, and sending an advisory is
+     * what arms the rumour-amplifier control.
+     *
+     * From this moment, every student in the notified cohort has their later
+     * reports stamped `prompted` and excluded from the detection statistic.
+     * That is the whole point: an alert must not be able to manufacture the
+     * evidence that justifies the next alert. Nothing else in the system
+     * creates an advisory, because nothing else involves a human deciding.
+     */
+    if (status === 'confirmed') {
+      const { store, result } = currentResult();
+      const cluster = result.clusters.find((c) => c.id === id) ?? result.topCluster;
+      const cohortNodeId = cluster?.nodeId ?? MESS_ID;
+      const campus = getCampus(new Date());
+      const node = campus.nodeById.get(cohortNodeId);
+
+      const advisory: AdvisoryRecord = {
+        id: `adv-${Date.now()}`,
+        clusterId: id,
+        cohortNodeId,
+        message:
+          `Precautionary advisory for ${node?.servesRooms ? `rooms ${node.servesRooms}` : node?.name ?? 'the affected area'}: ` +
+          `use bottled or boiled water until further notice. Report to the campus health centre if you feel unwell. ` +
+          `Maintenance has been notified.`,
+        sentAt: new Date(),
+      };
+      store.advisories.push(advisory);
+
+      const notified = campus.students.filter((s) =>
+        cohortNodeId === MESS_ID ? true : s.roomFilterId === cohortNodeId,
+      ).length;
+
+      return NextResponse.json({
+        ok: true,
+        status,
+        advisory,
+        notified,
+        scopedTo: node?.servesRooms ?? node?.name ?? null,
+      });
+    }
+
     return NextResponse.json({ ok: true, status });
   }
 
