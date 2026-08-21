@@ -13,7 +13,7 @@ import {
   Crosshair, 
   Building2, 
   Utensils, 
-  Waves,
+  Droplets,
   RotateCcw,
   ExternalLink,
   Plus,
@@ -21,9 +21,8 @@ import {
   Maximize2,
   Trash2,
   CheckCircle2,
-  Layers,
-  Sparkles,
-  Droplets
+  X,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,7 +35,7 @@ export interface StampedLocation {
   id: string;
   name: string;
   shortLabel: string;
-  type: 'block' | 'mess' | 'water' | 'filter';
+  type: 'block' | 'mess' | 'water';
   blockKey?: string;
   lat: number;
   lng: number;
@@ -75,15 +74,15 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   
-  // Custom Node creation state
-  const [customNodeName, setCustomNodeName] = useState('');
-  const [customNodeType, setCustomNodeType] = useState<'block' | 'mess' | 'water'>('block');
-  const [isAddingNew, setIsAddingNew] = useState(false);
+  // Custom Node Modal Dialog State
+  const [isStampModalOpen, setIsStampModalOpen] = useState(false);
+  const [stampName, setStampName] = useState('');
+  const [stampType, setStampType] = useState<'block' | 'mess' | 'water'>('block');
 
   // Map state
   const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 26.8433, lng: 75.5647 });
   const [zoom, setZoom] = useState(17);
-  const [isStampingMode, setIsStampingMode] = useState(false);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Drag-to-pan state
   const [isDragging, setIsDragging] = useState(false);
@@ -93,7 +92,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v3');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v4');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -103,7 +102,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v3', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v4', JSON.stringify(updated));
     } catch {}
   };
 
@@ -112,27 +111,44 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v3');
+      localStorage.removeItem('outbreak_radar_geo_pins_v4');
     } catch {}
   };
 
-  // Add a new custom node
-  const handleCreateNewNode = (type: 'block' | 'mess' | 'water') => {
-    const defaultNames = {
-      block: `Hostel Block ${String.fromCharCode(65 + locations.filter((l) => l.type === 'block').length)}`,
-      mess: `Dining Hall ${locations.filter((l) => l.type === 'mess').length + 1}`,
-      water: `RO Water Source ${locations.filter((l) => l.type === 'water').length + 1}`,
+  // Start stamping a newly defined location
+  const handleStartStampingNew = (useGpsNow: boolean = false) => {
+    const defaultLabels = {
+      block: `Block ${String.fromCharCode(65 + locations.filter((l) => l.type === 'block').length)}`,
+      mess: `Dining Mess ${locations.filter((l) => l.type === 'mess').length + 1}`,
+      water: `RO Station ${locations.filter((l) => l.type === 'water').length + 1}`,
     };
 
+    const finalName = stampName.trim() || defaultLabels[stampType];
+    const shortLabel = finalName.length > 14 ? finalName.slice(0, 14) : finalName;
     const newId = `node-${Date.now()}`;
-    const name = customNodeName.trim() || defaultNames[type];
-    const shortLabel = name.length > 12 ? name.slice(0, 12) : name;
+
+    if (useGpsNow && userGps) {
+      const newNode: StampedLocation = {
+        id: newId,
+        name: finalName,
+        shortLabel,
+        type: stampType,
+        lat: userGps.lat,
+        lng: userGps.lng,
+      };
+      const updated = [...locations, newNode];
+      savePins(updated);
+      setSelectedPinId(newId);
+      setIsStampModalOpen(false);
+      setStampName('');
+      return;
+    }
 
     const newNode: StampedLocation = {
       id: newId,
-      name,
+      name: finalName,
       shortLabel,
-      type,
+      type: stampType,
       lat: center.lat,
       lng: center.lng,
     };
@@ -140,9 +156,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     const updated = [...locations, newNode];
     savePins(updated);
     setActiveStampTarget(newId);
-    setIsStampingMode(true);
-    setIsAddingNew(false);
-    setCustomNodeName('');
+    setIsStampModalOpen(false);
+    setStampName('');
   };
 
   const handleDeleteNode = (id: string) => {
@@ -172,7 +187,6 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           );
           savePins(updated);
           setActiveStampTarget(null);
-          setIsStampingMode(false);
         }
       },
       (err) => {
@@ -190,6 +204,11 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (mapContainerRef.current) {
+      const rect = mapContainerRef.current.getBoundingClientRect();
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }
+
     if (!isDragging) return;
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
@@ -231,8 +250,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     );
 
     savePins(updated);
+    setSelectedPinId(activeStampTarget);
     setActiveStampTarget(null);
-    setIsStampingMode(false);
   };
 
   const getMarkerScreenPos = (lat: number, lng: number) => {
@@ -247,12 +266,11 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     };
   };
 
-  // Render pure high-res satellite imagery without any 3rd-party shop/street text labels
   const renderPureSatelliteTiles = () => {
     const centerTile = latLngToTile(center.lat, center.lng, zoom);
     const centerPixel = latLngToPixel(center.lat, center.lng, zoom);
     const containerW = mapContainerRef.current ? mapContainerRef.current.clientWidth : 800;
-    const containerH = mapContainerRef.current ? mapContainerRef.current.clientHeight : 500;
+    const containerH = mapContainerRef.current ? mapContainerRef.current.clientHeight : 520;
 
     const tiles = [];
     const radius = 2; // 5x5 tile grid
@@ -268,7 +286,6 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         const screenX = containerW / 2 + (tilePixelX - centerPixel.x);
         const screenY = containerH / 2 + (tilePixelY - centerPixel.y);
 
-        // Pure Satellite tile without labels
         const tileUrl = `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
 
         tiles.push(
@@ -297,8 +314,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     : null;
 
   return (
-    <Card className="border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden bg-zinc-950 text-white">
-      {/* Header & Toolbelt */}
+    <Card className="border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden bg-zinc-950 text-white relative">
+      {/* Header & Main Toolbelt */}
       <CardHeader className="py-3 px-4 sm:px-6 border-b border-zinc-800 bg-zinc-900 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -309,45 +326,24 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               Campus Satellite Outbreak Map
             </CardTitle>
             <Badge variant="outline" className="text-[10px] font-mono border-zinc-700 text-zinc-400">
-              Pure Satellite (Clean View)
+              Clean View
             </Badge>
           </div>
           <CardDescription className="text-xs text-zinc-400 mt-0.5">
-            Real satellite imagery with custom stamps for Hostel Blocks, Dining Mess, and RO Water Sources.
+            Pin and monitor hostel blocks, mess kitchens, and water distribution points directly on satellite imagery.
           </CardDescription>
         </div>
 
-        {/* Action Controls */}
+        {/* Primary Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Add Node Toolbelt Buttons */}
+          {/* BIG PROMINENT STAMP BUTTON */}
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => handleCreateNewNode('block')}
-            className="text-xs h-7.5 gap-1 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
+            onClick={() => setIsStampModalOpen(true)}
+            className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs h-8 px-3 gap-1.5 shadow-sm"
           >
-            <Plus className="h-3.5 w-3.5 text-emerald-400" />
-            <span>+ Add Block</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleCreateNewNode('mess')}
-            className="text-xs h-7.5 gap-1 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
-          >
-            <Plus className="h-3.5 w-3.5 text-amber-400" />
-            <span>+ Add Mess</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleCreateNewNode('water')}
-            className="text-xs h-7.5 gap-1 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
-          >
-            <Plus className="h-3.5 w-3.5 text-blue-400" />
-            <span>+ Add Water Source</span>
+            <Plus className="h-4 w-4" />
+            <span>+ Stamp New Location</span>
           </Button>
 
           {/* GPS Quick Button */}
@@ -355,79 +351,83 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             size="sm"
             variant="outline"
             onClick={handleGetGps}
-            className="text-xs h-7.5 gap-1 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
+            className="text-xs h-8 gap-1.5 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
           >
             <Navigation className="h-3.5 w-3.5 text-blue-400" />
-            <span>GPS Location</span>
+            <span>My GPS Location</span>
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
             onClick={handleResetToDefaults}
-            className="text-xs h-7.5 text-zinc-400 hover:text-zinc-100"
+            className="text-xs h-8 text-zinc-400 hover:text-zinc-100"
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset
+            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset Default Pins
           </Button>
         </div>
       </CardHeader>
 
       <CardContent className="p-4 space-y-3">
-        {/* Quick Stamp Selector Bar */}
+        {/* Quick Node Pin Strip */}
         <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
           <div className="flex items-center gap-1.5 font-bold text-zinc-200">
             <Crosshair className="h-4 w-4 text-amber-400" />
-            <span>Click any node below to reposition/stamp on map:</span>
+            <span>Active Pins:</span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
             {locations.map((loc) => {
               const isActive = activeStampTarget === loc.id;
+              const isSelected = selectedPinId === loc.id;
               const isBlock = loc.type === 'block';
               const isMess = loc.type === 'mess';
               const isWater = loc.type === 'water';
 
               return (
-                <div key={loc.id} className="flex items-center gap-0.5">
-                  <Button
-                    size="xs"
-                    variant={isActive ? 'default' : 'outline'}
-                    onClick={() => {
-                      setActiveStampTarget(isActive ? null : loc.id);
-                      setIsStampingMode(true);
-                    }}
-                    className={`h-6.5 px-2 text-[11px] font-medium ${
-                      isActive
-                        ? 'bg-amber-500 text-zinc-950 font-bold border-amber-400'
-                        : isBlock
-                        ? 'border-zinc-700 bg-zinc-950 text-zinc-200 hover:bg-zinc-800'
-                        : isMess
-                        ? 'border-amber-800/60 bg-amber-950/40 text-amber-300 hover:bg-amber-900/40'
-                        : 'border-blue-800/60 bg-blue-950/40 text-blue-300 hover:bg-blue-900/40'
-                    }`}
-                  >
-                    {isBlock && <Building2 className="h-3 w-3 mr-1 text-emerald-400" />}
-                    {isMess && <Utensils className="h-3 w-3 mr-1 text-amber-400" />}
-                    {isWater && <Droplets className="h-3 w-3 mr-1 text-blue-400" />}
-                    <span>{loc.shortLabel}</span>
-                  </Button>
-                </div>
+                <Button
+                  key={loc.id}
+                  size="xs"
+                  variant={isActive ? 'default' : isSelected ? 'secondary' : 'outline'}
+                  onClick={() => {
+                    setSelectedPinId(loc.id);
+                    setActiveStampTarget(isActive ? null : loc.id);
+                  }}
+                  className={`h-7 px-2.5 text-[11px] font-medium transition-all ${
+                    isActive
+                      ? 'bg-amber-500 text-zinc-950 font-bold border-amber-400'
+                      : isSelected
+                      ? 'border-white text-white font-bold bg-zinc-800'
+                      : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                >
+                  {isBlock && <Building2 className="h-3 w-3 mr-1 text-emerald-400" />}
+                  {isMess && <Utensils className="h-3 w-3 mr-1 text-amber-400" />}
+                  {isWater && <Droplets className="h-3 w-3 mr-1 text-blue-400" />}
+                  <span>{loc.shortLabel}</span>
+                </Button>
               );
             })}
           </div>
         </div>
 
+        {/* Stamping Instruction Banner */}
         {activeStampTarget && (
-          <div className="p-2 rounded bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs flex items-center justify-between">
-            <span>
-              <strong>Stamping Active:</strong> Click anywhere on the satellite image to place{' '}
-              <strong>{locations.find((l) => l.id === activeStampTarget)?.name}</strong>.
+          <div className="p-3 rounded-lg bg-amber-950/90 border border-amber-500/70 text-amber-100 text-xs flex items-center justify-between shadow-md animate-in fade-in duration-150">
+            <span className="flex items-center gap-2">
+              <Crosshair className="h-4 w-4 text-amber-400 animate-spin-slow" />
+              <span>
+                <strong>Click anywhere on the satellite image below</strong> to place{' '}
+                <span className="text-white font-bold underline">
+                  {locations.find((l) => l.id === activeStampTarget)?.name}
+                </span>.
+              </span>
             </span>
             <Button
               size="xs"
               variant="ghost"
               onClick={() => setActiveStampTarget(null)}
-              className="h-5 text-amber-300 hover:text-white"
+              className="h-6 text-xs text-amber-300 hover:text-white"
             >
               Cancel
             </Button>
@@ -440,22 +440,25 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           </div>
         )}
 
-        {/* Clean Satellite Map Container */}
+        {/* Clean Satellite Map Viewport */}
         <div
           ref={mapContainerRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseLeave={() => {
+            handleMouseUp();
+            setMousePos(null);
+          }}
           onClick={handleMapClick}
           className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-zinc-800 select-none bg-zinc-950 ${
             activeStampTarget ? 'cursor-crosshair ring-2 ring-amber-500' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
-          {/* Pure Satellite Imagery (0 3rd party labels) */}
+          {/* Pure Satellite Tile Layer (0 3rd party labels) */}
           {renderPureSatelliteTiles()}
 
-          {/* Stamped Map Markers (Our own clean labels only) */}
+          {/* Stamped Node Markers (Only user and engine labels) */}
           {locations.map((loc) => {
             const isBlock = loc.type === 'block';
             const isMess = loc.type === 'mess';
@@ -493,10 +496,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 }}
                 className="absolute z-20 cursor-pointer transition-transform duration-150 group flex flex-col items-center"
               >
-                {/* Clean Drop Pin */}
+                {/* Clean Drop Pin Icon */}
                 <div
                   className={`relative flex items-center justify-center rounded-full p-2 shadow-lg border-2 transition-all ${
-                    isSelected ? 'scale-110 ring-2 ring-white' : 'hover:scale-105'
+                    isSelected ? 'scale-115 ring-2 ring-white' : 'hover:scale-105'
                   } ${
                     isFlagged
                       ? 'bg-red-600 border-white text-white'
@@ -514,7 +517,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   {isWater && <Droplets className="h-4 w-4" />}
                 </div>
 
-                {/* Pin Tip */}
+                {/* Drop Pin Tip */}
                 <div
                   className={`w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] -mt-0.5 ${
                     isFlagged
@@ -550,6 +553,17 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             >
               <span className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white ring-4 ring-blue-500/30 animate-pulse absolute" />
               <span className="h-3 w-3 rounded-full bg-blue-500 border border-white relative z-10" />
+            </div>
+          )}
+
+          {/* Stamping Cursor Follower Tooltip */}
+          {activeStampTarget && mousePos && (
+            <div
+              style={{ left: `${mousePos.x + 12}px`, top: `${mousePos.y + 12}px` }}
+              className="absolute z-40 pointer-events-none px-2.5 py-1 rounded-md bg-amber-500 text-zinc-950 font-bold text-xs shadow-lg flex items-center gap-1"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              <span>Click to Drop Pin</span>
             </div>
           )}
 
@@ -592,7 +606,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
         {/* Selected Node Details Drawer */}
         {selectedLoc && (
-          <div className="p-3.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs space-y-3">
+          <div className="p-3.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs space-y-3 animate-in fade-in duration-150">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 {selectedLoc.type === 'mess' ? (
@@ -605,7 +619,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 <div>
                   <h4 className="font-bold text-zinc-100">{selectedLoc.name}</h4>
                   <p className="text-[11px] text-zinc-400 font-mono">
-                    Stamped Coordinates: {selectedLoc.lat.toFixed(5)}° N, {selectedLoc.lng.toFixed(5)}° E
+                    Coordinates: {selectedLoc.lat.toFixed(5)}° N, {selectedLoc.lng.toFixed(5)}° E
                   </p>
                 </div>
               </div>
@@ -614,13 +628,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 <Button
                   size="xs"
                   variant="outline"
-                  onClick={() => {
-                    setActiveStampTarget(selectedLoc.id);
-                    setIsStampingMode(true);
-                  }}
+                  onClick={() => setActiveStampTarget(selectedLoc.id)}
                   className="h-7 text-xs border-zinc-700 text-zinc-200"
                 >
-                  <Crosshair className="h-3 w-3 mr-1" /> Re-Stamp Location
+                  <Crosshair className="h-3 w-3 mr-1" /> Re-Position on Map
                 </Button>
 
                 <Button
@@ -668,6 +679,122 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           </div>
         )}
       </CardContent>
+
+      {/* STAMP NEW LOCATION MODAL DIALOG */}
+      {isStampModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-5 space-y-4 text-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-red-600 text-white">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <h3 className="font-bold text-base">Stamp New Campus Location</h3>
+              </div>
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                onClick={() => setIsStampModalOpen(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Step 1: Type selection */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-zinc-300">1. Select Location Type:</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStampType('block')}
+                  className={`p-3 rounded-xl border text-xs flex flex-col items-center gap-1.5 transition-all ${
+                    stampType === 'block'
+                      ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                  }`}
+                >
+                  <Building2 className="h-5 w-5 text-emerald-500" />
+                  <span>Hostel Block</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStampType('mess')}
+                  className={`p-3 rounded-xl border text-xs flex flex-col items-center gap-1.5 transition-all ${
+                    stampType === 'mess'
+                      ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                  }`}
+                >
+                  <Utensils className="h-5 w-5 text-amber-500" />
+                  <span>Dining Mess</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStampType('water')}
+                  className={`p-3 rounded-xl border text-xs flex flex-col items-center gap-1.5 transition-all ${
+                    stampType === 'water'
+                      ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                  }`}
+                >
+                  <Droplets className="h-5 w-5 text-blue-500" />
+                  <span>RO Water Source</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Step 2: Name Input */}
+            <div className="space-y-1.5">
+              <label htmlFor="locName" className="text-xs font-semibold text-zinc-300">
+                2. Location Name / Title:
+              </label>
+              <Input
+                id="locName"
+                value={stampName}
+                onChange={(e) => setStampName(e.target.value)}
+                placeholder={
+                  stampType === 'block'
+                    ? 'e.g. Hostel Block E'
+                    : stampType === 'mess'
+                    ? 'e.g. Old Mess / Night Canteen'
+                    : 'e.g. RO Plant #2 (Overhead Tank)'
+                }
+                className="h-9 bg-zinc-950 border-zinc-700 text-xs text-white"
+              />
+            </div>
+
+            {/* Step 3: Stamping Mode Actions */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => handleStartStampingNew(false)}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs h-9 gap-1.5 shadow"
+              >
+                <Crosshair className="h-4 w-4" />
+                <span>Click Map to Drop Pin</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (userGps) {
+                    handleStartStampingNew(true);
+                  } else {
+                    handleGetGps();
+                    handleStartStampingNew(true);
+                  }
+                }}
+                className="flex-1 border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 text-xs h-9 gap-1.5"
+              >
+                <Navigation className="h-3.5 w-3.5 text-blue-400" />
+                <span>Stamp at My GPS</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
