@@ -2,7 +2,7 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { clusterDetailFixture, fixtureFor } from '@/lib/detect/fixture';
-import { ScenarioId, UserRole } from '@/lib/types';
+import { ClusterDetail, ScenarioId, UserRole } from '@/lib/types';
 import { ClusterView } from './cluster-view';
 import { QuietView } from './quiet-view';
 
@@ -23,16 +23,16 @@ export default async function ClusterDetailPage({ params }: PageProps) {
 
   if (id === 'quiet' || id === 'filter_fault' || id === 'food' || id === 'coincidence') {
     scenarioId = id;
-  } else if (id === 'cluster-filter-3a') {
+  } else if (id === 'cluster-filter-3a' || id === 'cluster-filter_fault') {
     scenarioId = 'filter_fault';
-  } else if (id === 'cluster-tue-dinner') {
+  } else if (id === 'cluster-tue-dinner' || id === 'cluster-food') {
     scenarioId = 'food';
-  } else if (id === 'cluster-block-a-chance') {
+  } else if (id === 'cluster-block-a-chance' || id === 'cluster-coincidence') {
     scenarioId = 'coincidence';
   }
 
-  // Handle Quiet Baseline Scenario deliberately
-  if (scenarioId === 'quiet') {
+  // Handle Quiet Baseline Scenario deliberately (404 / quiet scenario)
+  if (scenarioId === 'quiet' || id === 'quiet') {
     const quietResult = fixtureFor('quiet');
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
@@ -43,11 +43,29 @@ export default async function ClusterDetailPage({ params }: PageProps) {
     );
   }
 
-  // Load cluster detail fixture
-  const detail = clusterDetailFixture(scenarioId);
+  // Live API fetch with fallback to fixture
+  let detail: ClusterDetail | null = null;
+  const clusterApiId = id.startsWith('cluster-') ? id : `cluster-${id}`;
+
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/clusters/${clusterApiId}`, {
+      cache: 'no-store',
+    });
+
+    if (res.ok) {
+      detail = await res.json();
+    }
+  } catch {
+    // Network / SSR fallback
+  }
+
+  // Fallback to deterministic fixture if API returned 404/offline
+  if (!detail) {
+    detail = clusterDetailFixture(scenarioId);
+  }
 
   if (!detail) {
-    // If not found or empty, render quiet baseline view
     const detectionResult = fixtureFor(scenarioId);
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">

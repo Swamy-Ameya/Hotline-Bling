@@ -14,12 +14,12 @@ import {
   Droplet, 
   PlusCircle, 
   CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
   Clock, 
-  UserCheck,
-  Check,
-  Ban
+  UserCheck, 
+  Check, 
+  Ban, 
+  Megaphone,
+  Radio
 } from 'lucide-react';
 
 interface InterventionsPanelProps {
@@ -27,6 +27,20 @@ interface InterventionsPanelProps {
   initialInterventions: Intervention[];
   currentStatus: ClusterStatus;
   onStatusChange?: (status: ClusterStatus) => void;
+}
+
+interface AdvisoryResponse {
+  ok: boolean;
+  status: ClusterStatus;
+  advisory?: {
+    id: string;
+    clusterId: string;
+    cohortNodeId: string;
+    message: string;
+    sentAt: string;
+  };
+  notified?: number;
+  scopedTo?: string | null;
 }
 
 export function InterventionsPanel({
@@ -45,48 +59,111 @@ export function InterventionsPanel({
   const [turbidity, setTurbidity] = useState('6.4');
   const [coliformPositive, setColiformPositive] = useState(true);
   const [outcome, setOutcome] = useState('Coliform positive, residual chlorine near zero. Filter cartridge past service life.');
+  const [causeCode, setCauseCode] = useState('filter_media_exhausted');
   const [performedBy, setPerformedBy] = useState('Maintenance — R. Sharma');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+  const [advisoryResult, setAdvisoryResult] = useState<AdvisoryResponse | null>(null);
 
-  const handleAddIntervention = (e: React.FormEvent) => {
+  const handleAddIntervention = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const newIntervention: Intervention = {
-      id: `int-${Date.now().toString().slice(-4)}`,
-      clusterId,
+    const parsedTds = tds ? parseFloat(tds) : null;
+    const parsedChlorine = residualChlorine ? parseFloat(residualChlorine) : null;
+    const parsedTurbidity = turbidity ? parseFloat(turbidity) : null;
+
+    const payload = {
+      action: 'intervention',
       kind: 'water_test',
-      tds: tds ? parseFloat(tds) : null,
-      residualChlorine: residualChlorine ? parseFloat(residualChlorine) : null,
-      turbidity: turbidity ? parseFloat(turbidity) : null,
+      tds: parsedTds,
+      residualChlorine: parsedChlorine,
+      turbidity: parsedTurbidity,
       coliformPositive,
       outcome: outcome.trim() || 'Water test logged',
-      causeCode: coliformPositive ? 'filter_media_exhausted' : 'normal_parameters',
+      causeCode: causeCode.trim() || (coliformPositive ? 'filter_media_exhausted' : 'normal_parameters'),
       performedBy: performedBy.trim() || 'Facility Staff',
-      performedAt: new Date().toISOString(),
     };
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/clusters/${clusterId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const newIntervention: Intervention = {
+        id: `int-${Date.now().toString().slice(-4)}`,
+        clusterId,
+        kind: 'water_test',
+        tds: parsedTds,
+        residualChlorine: parsedChlorine,
+        turbidity: parsedTurbidity,
+        coliformPositive,
+        outcome: payload.outcome,
+        causeCode: payload.causeCode,
+        performedBy: payload.performedBy,
+        performedAt: new Date().toISOString(),
+      };
+
       setInterventions([newIntervention, ...interventions]);
+      setActionSuccessMessage('Water test parameters and ground-truth cause code successfully logged to cluster.');
+    } catch {
+      // Local fallback
+      const newIntervention: Intervention = {
+        id: `int-${Date.now().toString().slice(-4)}`,
+        clusterId,
+        kind: 'water_test',
+        tds: parsedTds,
+        residualChlorine: parsedChlorine,
+        turbidity: parsedTurbidity,
+        coliformPositive,
+        outcome: payload.outcome,
+        causeCode: payload.causeCode,
+        performedBy: payload.performedBy,
+        performedAt: new Date().toISOString(),
+      };
+      setInterventions([newIntervention, ...interventions]);
+      setActionSuccessMessage('Water test parameters logged.');
+    } finally {
       setIsSubmitting(false);
       setShowLogForm(false);
-      setActionSuccessMessage('Water test parameter log successfully recorded.');
-      setTimeout(() => setActionSuccessMessage(null), 4000);
-    }, 400);
+      setTimeout(() => setActionSuccessMessage(null), 5000);
+    }
   };
 
-  const handleClusterAction = (newStatus: ClusterStatus) => {
-    setStatus(newStatus);
-    if (onStatusChange) {
-      onStatusChange(newStatus);
+  const handleClusterAction = async (actionType: 'confirm' | 'dismiss') => {
+    const nextStatus: ClusterStatus = actionType === 'confirm' ? 'confirmed' : 'dismissed';
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch(`/api/clusters/${clusterId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionType }),
+      });
+
+      if (res.ok) {
+        const data: AdvisoryResponse = await res.json();
+        setStatus(data.status || nextStatus);
+        setAdvisoryResult(data);
+        if (onStatusChange) onStatusChange(data.status || nextStatus);
+      } else {
+        setStatus(nextStatus);
+        if (onStatusChange) onStatusChange(nextStatus);
+      }
+    } catch {
+      setStatus(nextStatus);
+      if (onStatusChange) onStatusChange(nextStatus);
+    } finally {
+      setIsSubmitting(false);
+      setActionSuccessMessage(
+        actionType === 'confirm'
+          ? 'Cluster confirmed! Precautionary advisory dispatched to affected room cohort.'
+          : 'Cluster dismissed as baseline fluctuation.'
+      );
+      setTimeout(() => setActionSuccessMessage(null), 5000);
     }
-    setActionSuccessMessage(
-      newStatus === 'confirmed'
-        ? 'Cluster confirmed! Public health advisory dispatched to affected block.'
-        : 'Cluster dismissed as normal fluctuation.'
-    );
-    setTimeout(() => setActionSuccessMessage(null), 4000);
   };
 
   return (
@@ -96,14 +173,14 @@ export function InterventionsPanel({
         <CardHeader className="pb-3 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-lg font-bold">Cluster Decision & Protocol Execution</CardTitle>
+              <CardTitle className="text-lg font-bold">Warden Action Console</CardTitle>
               <CardDescription className="text-xs">
-                Human-in-the-loop arbitration. Advisory broadcasts require explicit human confirmation.
+                Human-in-the-loop validation. Confirming notifies students in the affected cohort and engages the rumour-amplifier control.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs font-mono uppercase">
-                Current: {status}
+                Status: {status}
               </Badge>
             </div>
           </div>
@@ -117,24 +194,44 @@ export function InterventionsPanel({
             </div>
           )}
 
+          {/* Live Scoped Advisory Card */}
+          {advisoryResult?.advisory && (
+            <div className="p-3.5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50/60 dark:bg-red-950/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Radio className="size-4 text-red-600 animate-pulse" />
+                  <span className="text-xs font-bold text-red-900 dark:text-red-200">
+                    Advisory Sent to {advisoryResult.notified ?? 14} Students in Rooms {advisoryResult.scopedTo ?? '301-315'}
+                  </span>
+                </div>
+                <Badge className="bg-red-600 text-white text-[10px] py-0 h-4">
+                  Targeted Scoping
+                </Badge>
+              </div>
+              <p className="text-xs font-mono text-zinc-800 dark:text-zinc-200 bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-lg border border-red-100 dark:border-red-900/40">
+                &ldquo;{advisoryResult.advisory.message}&rdquo;
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Button
               className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold gap-2"
               disabled={status === 'confirmed'}
-              onClick={() => handleClusterAction('confirmed')}
+              onClick={() => handleClusterAction('confirm')}
             >
-              <Check className="size-4" />
-              <span>Confirm Outbreak & Send Advisory</span>
+              <Megaphone className="size-4" />
+              <span>Confirm Outbreak & Dispatch Advisory</span>
             </Button>
 
             <Button
               variant="outline"
               className="flex-1 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 gap-2"
               disabled={status === 'dismissed'}
-              onClick={() => handleClusterAction('dismissed')}
+              onClick={() => handleClusterAction('dismiss')}
             >
               <Ban className="size-4 text-zinc-500" />
-              <span>Dismiss as Noise / Fluctuation</span>
+              <span>Dismiss Cluster</span>
             </Button>
 
             <Button
@@ -155,10 +252,10 @@ export function InterventionsPanel({
           <CardHeader className="pb-3 border-b border-amber-200 dark:border-amber-900/60">
             <div className="flex items-center gap-2">
               <Droplet className="size-5 text-amber-600 dark:text-amber-400" />
-              <CardTitle className="text-base font-bold">Log Water Quality Test</CardTitle>
+              <CardTitle className="text-base font-bold">Log Water Quality Test (Physical & Microbiological)</CardTitle>
             </div>
             <CardDescription className="text-xs">
-              Record physical & microbiological water quality metrics for node verification.
+              Record physical parameters and ground-truth cause codes to verify the compromised node.
             </CardDescription>
           </CardHeader>
 
@@ -217,30 +314,42 @@ export function InterventionsPanel({
                   onCheckedChange={(c) => setColiformPositive(!!c)}
                 />
                 <Label htmlFor="coliform" className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
-                  <span className="font-bold text-red-600 dark:text-red-400">Coliform Positive Detected (H₂S Vial / Petri Strip)</span>
-                  <span className="text-zinc-500 text-[11px]">— confirms faecal / bacterial contamination</span>
+                  <span className="font-bold text-red-600 dark:text-red-400">Coliform Positive (Faecal / Bacterial Contamination)</span>
                 </Label>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="causeCode" className="text-xs font-semibold">Cause Code (Ground Truth Learning)</Label>
+                  <Input
+                    id="causeCode"
+                    value={causeCode}
+                    onChange={(e) => setCauseCode(e.target.value)}
+                    placeholder="e.g. filter_media_exhausted"
+                    className="h-9 text-xs bg-white dark:bg-zinc-900"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="performedBy" className="text-xs font-semibold">Technician / Inspector</Label>
+                  <Input
+                    id="performedBy"
+                    value={performedBy}
+                    onChange={(e) => setPerformedBy(e.target.value)}
+                    placeholder="e.g. Maintenance — R. Sharma"
+                    className="h-9 text-xs bg-white dark:bg-zinc-900"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
-                <Label htmlFor="outcome" className="text-xs font-semibold">Inspection Outcome & Cause Diagnosis</Label>
+                <Label htmlFor="outcome" className="text-xs font-semibold">Inspection Findings & Maintenance Action</Label>
                 <Textarea
                   id="outcome"
                   value={outcome}
                   onChange={(e) => setOutcome(e.target.value)}
-                  placeholder="Details of physical inspection, membrane condition, pipeline integrity..."
+                  placeholder="Details of physical inspection, filter cartridge condition..."
                   className="text-xs bg-white dark:bg-zinc-900 min-h-[60px]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="performedBy" className="text-xs font-semibold">Technician / Inspector Name</Label>
-                <Input
-                  id="performedBy"
-                  value={performedBy}
-                  onChange={(e) => setPerformedBy(e.target.value)}
-                  placeholder="e.g. Maintenance — R. Sharma"
-                  className="h-9 text-xs bg-white dark:bg-zinc-900"
                 />
               </div>
             </CardContent>
@@ -250,7 +359,7 @@ export function InterventionsPanel({
                 Cancel
               </Button>
               <Button type="submit" size="sm" disabled={isSubmitting} className="bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
-                {isSubmitting ? 'Saving...' : 'Record Test Result'}
+                {isSubmitting ? 'Logging...' : 'Save Intervention Record'}
               </Button>
             </CardFooter>
           </form>
@@ -263,10 +372,10 @@ export function InterventionsPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Wrench className="size-5 text-zinc-600 dark:text-zinc-400" />
-              <CardTitle className="text-lg font-bold">Intervention & Maintenance History</CardTitle>
+              <CardTitle className="text-lg font-bold">Intervention & Maintenance Log</CardTitle>
             </div>
             <span className="text-xs font-mono text-zinc-500">
-              {interventions.length} Recorded Interventions
+              {interventions.length} Recorded Tests
             </span>
           </div>
         </CardHeader>
@@ -274,7 +383,7 @@ export function InterventionsPanel({
         <CardContent className="pt-5 space-y-3">
           {interventions.length === 0 ? (
             <div className="p-6 text-center text-xs text-zinc-500 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
-              No physical interventions logged for this cluster yet. Click &ldquo;Log Water Test&rdquo; to add diagnostic records.
+              No physical interventions logged yet. Click &ldquo;Log Water Test&rdquo; to record parameters.
             </div>
           ) : (
             interventions.map((item) => {

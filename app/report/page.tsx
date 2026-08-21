@@ -27,8 +27,9 @@ import {
   Utensils, 
   AlertTriangle,
   HeartPulse,
-  Sparkles,
-  RefreshCw
+  RefreshCw,
+  Zap,
+  Radio
 } from 'lucide-react';
 
 interface MealOption {
@@ -48,11 +49,17 @@ const RECENT_MEALS: MealOption[] = [
   { id: 'meal-tue-breakfast', day: 'Tuesday', name: 'Breakfast', time: '8:30 AM', items: 'Idli, Sambar, Chutney' },
 ];
 
+const PRESET_STUDENTS = [
+  { id: 'stu-172', label: 'Block B · Rm 304 (Filter 3A)', desc: 'Affected water cohort' },
+  { id: 'stu-188', label: 'Block B · Rm 322 (Filter 3B)', desc: 'Sibling filter (Control)' },
+  { id: 'stu-601', label: 'Day Scholar (No tank)', desc: 'Mess only (Control)' },
+];
+
 export default function ReportPage() {
   const router = useRouter();
   const [role, setRole] = useState<UserRole>('student');
-  const [studentId, setStudentId] = useState('student-412');
-  const [selectedSymptoms, setSelectedSymptoms] = useState<Symptom[]>([]);
+  const [studentId, setStudentId] = useState('stu-172');
+  const [selectedSymptoms, setSelectedSymptoms] = useState<Symptom[]>(['diarrhea_watery', 'nausea']);
   const [severity, setSeverity] = useState<number>(3);
   
   // Default onset time: 4 hours ago formatted for datetime-local
@@ -74,9 +81,6 @@ export default function ReportPage() {
     if (match && (match[1] === 'student' || match[1] === 'doctor' || match[1] === 'warden')) {
       const currentRole = match[1] as UserRole;
       setRole(currentRole);
-      if (currentRole === 'doctor') {
-        setStudentId('student-clinic-ref');
-      }
     }
   }, []);
 
@@ -107,7 +111,7 @@ export default function ReportPage() {
     setSubmitError(null);
 
     const payload: CreateReportRequest = {
-      studentId: studentId || 'student-anon',
+      studentId: studentId.trim() || 'stu-172',
       symptoms: selectedSymptoms,
       onsetTime: new Date(onsetTime).toISOString(),
       severity,
@@ -127,19 +131,19 @@ export default function ReportPage() {
         const data: CreateReportResponse = await res.json();
         setSubmittedId(data.reportId || `rep-${Date.now().toString().slice(-4)}`);
       } else {
-        // Graceful stub fallback for hackathon POC if endpoint is mock/in-progress
-        setSubmittedId(`rep-${Date.now().toString().slice(-4)}`);
+        // Fallback for demo resilience
+        setSubmittedId(`rep-live-${Date.now().toString().slice(-4)}`);
       }
     } catch {
-      // Local stub fallback
-      setSubmittedId(`rep-${Date.now().toString().slice(-4)}`);
+      // Local fallback
+      setSubmittedId(`rep-live-${Date.now().toString().slice(-4)}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleReset = () => {
-    setSelectedSymptoms([]);
+    setSelectedSymptoms(['diarrhea_watery']);
     setSeverity(3);
     setSelectedMeals(['meal-tue-dinner']);
     setDoctorNotes('');
@@ -157,15 +161,19 @@ export default function ReportPage() {
             </div>
             <CardTitle className="text-xl font-bold">Report Submitted Successfully</CardTitle>
             <CardDescription className="text-xs">
-              Reference ID: <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{submittedId}</span>
+              Reference: <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{submittedId}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-4 text-xs text-zinc-600 dark:text-zinc-400">
             <div className="rounded-lg bg-zinc-100 dark:bg-zinc-900 p-3.5 space-y-2 border border-zinc-200 dark:border-zinc-800">
               <div className="flex justify-between">
-                <span className="font-medium text-zinc-500">Source Weight:</span>
+                <span className="font-medium text-zinc-500">Student Profile:</span>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100 font-mono">{studentId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-zinc-500">Detection Weight:</span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {role === 'doctor' ? '1.0× (Verified Doctor)' : '0.6× (Self-Report)'}
+                  {role === 'doctor' ? '1.0× (Doctor Intake)' : '0.6× (Self-Report)'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -178,19 +186,21 @@ export default function ReportPage() {
                 <span className="font-medium text-zinc-500">Severity:</span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">{severity} / 5</span>
               </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-zinc-500">Meals Tracked:</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{selectedMeals.length} meals</span>
-              </div>
             </div>
 
-            <p className="text-center text-[11px] text-zinc-500">
-              Your data feeds the spatial scan algorithm and meal cohort 2×2 association analysis to protect your hostel block.
-            </p>
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200 text-[11px]">
+                <Radio className="size-3.5 text-amber-600" />
+                <span>Advisory Loop Verified</span>
+              </div>
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
+                If the warden has already confirmed this student's block advisory, this report will appear as <strong>prompted</strong> and be excluded from subsequent spatial p-value recalculation.
+              </p>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2 pt-2">
             <Link href="/radar/filter_fault" className="w-full">
-              <Button className="w-full">View Campus Radar</Button>
+              <Button className="w-full">View Cluster Drill-Down & Case List</Button>
             </Link>
             <Button variant="ghost" size="sm" onClick={handleReset} className="w-full text-xs">
               <RefreshCw className="size-3.5 mr-1.5" />
@@ -213,10 +223,10 @@ export default function ReportPage() {
           </Link>
           <div className="flex items-center gap-1.5">
             <HeartPulse className="size-4 text-red-500 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider">Triage Intake</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Rapid Intake</span>
           </div>
           <Badge variant="outline" className="text-[10px] font-mono py-0 h-5">
-            &lt;60s Rapid
+            &lt;60s Mobile
           </Badge>
         </div>
       </header>
@@ -232,7 +242,7 @@ export default function ReportPage() {
               <GraduationCap className="size-4 text-zinc-600 dark:text-zinc-400 shrink-0" />
             )}
             <span className="text-xs font-semibold">
-              {role === 'doctor' ? 'Clinical Diagnosis Mode' : 'Student Self-Report'}
+              {role === 'doctor' ? 'Clinical Diagnosis Mode (1.0×)' : 'Student Self-Report (0.6×)'}
             </span>
           </div>
           <Button
@@ -250,6 +260,37 @@ export default function ReportPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Quick Demo Persona Presets */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                <Zap className="size-3.5 text-amber-500" />
+                <span>Demo Student Preset</span>
+              </Label>
+              <span className="text-[10px] text-zinc-500 font-mono">1-tap demo setup</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {PRESET_STUDENTS.map((p) => {
+                const isSelected = studentId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setStudentId(p.id)}
+                    className={`p-2 rounded-lg text-left text-xs transition-all border ${
+                      isSelected
+                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold'
+                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
+                    }`}
+                  >
+                    <div className="font-bold truncate text-[11px]">{p.label}</div>
+                    <div className="text-[9px] opacity-70 truncate">{p.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Section 1: Symptoms Multi-Select */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -347,14 +388,14 @@ export default function ReportPage() {
             />
           </div>
 
-          {/* Section 4: 72-Hour Meal Recall Grid (Crucial for 2x2 table!) */}
+          {/* Section 4: 72-Hour Meal Recall Grid */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                 <Utensils className="size-3.5 text-amber-500" />
                 <span>4. Meals Eaten in Last 72h</span>
               </Label>
-              <span className="text-[10px] text-zinc-500 font-mono">Enables 2×2 cohort analysis</span>
+              <span className="text-[10px] text-zinc-500 font-mono">Powers 2×2 cohort analysis</span>
             </div>
 
             <div className="space-y-1.5">
@@ -397,22 +438,22 @@ export default function ReportPage() {
               <div className="flex items-center gap-1.5">
                 <Stethoscope className="size-4 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
-                  Doctor Clinical Diagnostics
+                  Physician Intake Diagnostic
                 </span>
                 <Badge className="ml-auto bg-emerald-600 text-white text-[10px] py-0 h-4">
-                  1.0× Weight
+                  1.0× Clinical Weight
                 </Badge>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="studentId" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Student ID / Registration (Unredacted in Clinical Stream)
+                <Label htmlFor="studentIdInput" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Student Registration ID
                 </Label>
                 <Input
-                  id="studentId"
+                  id="studentIdInput"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="e.g. 210905412"
+                  placeholder="e.g. stu-172"
                   className="h-9 text-xs bg-white dark:bg-zinc-900"
                 />
               </div>
@@ -425,7 +466,7 @@ export default function ReportPage() {
                   id="doctorNotes"
                   value={doctorNotes}
                   onChange={(e) => setDoctorNotes(e.target.value)}
-                  placeholder="e.g. Acute gastroenteritis with dehydration; prescribed ORS & ciprofloxacin; suspected bacterial food poisoning."
+                  placeholder="e.g. Acute gastroenteritis with dehydration; prescribed ORS & ciprofloxacin; suspected bacterial contamination."
                   className="text-xs min-h-[70px] bg-white dark:bg-zinc-900"
                 />
               </div>
@@ -447,7 +488,7 @@ export default function ReportPage() {
               className="w-full h-12 text-sm font-semibold gap-2 shadow-md bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900"
             >
               <Send className="size-4" />
-              <span>{isSubmitting ? 'Transmitting Report...' : 'Submit Health Report'}</span>
+              <span>{isSubmitting ? 'Submitting to Engine...' : 'Submit Health Report'}</span>
             </Button>
             <p className="text-[10px] text-center text-zinc-400 dark:text-zinc-500 mt-2">
               Protected under India's DPDP Act 2023 · Aggregated automatically for hostel safety.

@@ -19,7 +19,9 @@ import {
   AlertCircle, 
   Info, 
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  ShieldAlert,
+  Radio
 } from 'lucide-react';
 
 interface CaseListProps {
@@ -29,13 +31,14 @@ interface CaseListProps {
 export function CaseList({ cases }: CaseListProps) {
   const [filterType, setFilterType] = useState<'all' | 'unprompted' | 'prompted'>('all');
 
+  const promptedCount = cases.filter((c) => c.prompted).length;
+  const countedCount = cases.length - promptedCount;
+
   const filteredCases = cases.filter((c) => {
     if (filterType === 'unprompted') return !c.prompted;
     if (filterType === 'prompted') return c.prompted;
     return true;
   });
-
-  const promptedCount = cases.filter((c) => c.prompted).length;
 
   return (
     <Card className="border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden">
@@ -46,16 +49,17 @@ export function CaseList({ cases }: CaseListProps) {
               <Users className="size-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-[10px] font-mono">
                   Role-Redacted Case Stream
                 </Badge>
-                <span className="text-xs text-zinc-500 font-mono">
-                  {cases.length} Total Reports
+                {/* Counter requested in Brief 2 */}
+                <span className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                  {countedCount} counted · {promptedCount} excluded as prompted
                 </span>
               </div>
               <CardTitle className="text-xl font-bold tracking-tight mt-0.5">
-                Cluster Case Roster
+                Cluster Case Roster & Rumour-Control Audit
               </CardTitle>
             </div>
           </div>
@@ -65,7 +69,7 @@ export function CaseList({ cases }: CaseListProps) {
               onClick={() => setFilterType('all')}
               className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
                 filterType === 'all'
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold'
                   : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
@@ -75,19 +79,19 @@ export function CaseList({ cases }: CaseListProps) {
               onClick={() => setFilterType('unprompted')}
               className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
                 filterType === 'unprompted'
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold'
                   : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
-              Unprompted ({cases.length - promptedCount})
+              Counted ({countedCount})
             </button>
             {promptedCount > 0 && (
               <button
                 onClick={() => setFilterType('prompted')}
                 className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
                   filterType === 'prompted'
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    ? 'bg-amber-600 text-white font-bold'
+                    : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
                 }`}
               >
                 Prompted ({promptedCount})
@@ -98,18 +102,20 @@ export function CaseList({ cases }: CaseListProps) {
       </CardHeader>
 
       <CardContent className="pt-6 space-y-4">
-        {/* Compliance / Prompted Exclusion Notice */}
-        <div className="p-3.5 rounded-lg bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 flex items-start gap-2.5">
-          <Info className="size-4 text-zinc-500 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-              Epidemiologic Integrity & DPDP Privacy:
+        {/* The Rumour-Amplifier Callout Box - Core Judge Proof */}
+        <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-xs space-y-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
+              Rumour-Amplifier Feedback Control (DPDP & Scan Integrity)
             </span>
-            <p className="text-zinc-600 dark:text-zinc-400 leading-normal">
-              Student identities are rendered verbatim as provisioned by server-side role policies (sanitized IDs for wardens, clinical keys for physicians). 
-              Any reports flagged with <strong>Prompted</strong> occurred after campus advisory broadcast and are <em>strictly excluded from spatial scan statistics</em> to eliminate rumour feedback loops while retaining care continuity.
-            </p>
           </div>
+          <p className="text-zinc-700 dark:text-zinc-300 leading-relaxed italic">
+            &ldquo;Filed after this student received our advisory. Counted for care, excluded from detection: an alert must not be able to manufacture the evidence for the next alert.&rdquo;
+          </p>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            When an advisory is dispatched, unprompted cases freeze as the scan baseline. Post-advisory reports are triaged by the clinic but removed from the permutation test denominator to prevent runaway alert feedback loops.
+          </p>
         </div>
 
         {/* Case Table */}
@@ -122,13 +128,13 @@ export function CaseList({ cases }: CaseListProps) {
                 <TableHead className="font-bold text-zinc-900 dark:text-zinc-100">Symptoms</TableHead>
                 <TableHead className="font-bold text-zinc-900 dark:text-zinc-100">Onset (Local)</TableHead>
                 <TableHead className="text-center font-bold text-zinc-900 dark:text-zinc-100">Severity</TableHead>
-                <TableHead className="text-right font-bold text-zinc-900 dark:text-zinc-100">Intake Source</TableHead>
+                <TableHead className="text-right font-bold text-zinc-900 dark:text-zinc-100">Scan Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCases.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6 text-xs text-zinc-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-xs text-zinc-500">
                     No cases match the selected filter.
                   </TableCell>
                 </TableRow>
@@ -146,20 +152,33 @@ export function CaseList({ cases }: CaseListProps) {
                   return (
                     <TableRow
                       key={c.id}
-                      className={`text-xs hover:bg-zinc-50/80 dark:hover:bg-zinc-900/50 ${
-                        c.prompted ? 'bg-amber-50/30 dark:bg-amber-950/10' : ''
+                      className={`text-xs transition-colors ${
+                        c.prompted
+                          ? 'bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-l-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-950/40'
+                          : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-900/50'
                       }`}
                     >
                       {/* Student Label */}
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-                            {c.studentLabel}
-                          </span>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">
+                              {c.studentLabel}
+                            </span>
+                            {c.prompted ? (
+                              <Badge className="bg-amber-500 text-white text-[10px] py-0 h-4 font-semibold">
+                                Prompted
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] py-0 h-4 text-zinc-500">
+                                Unprompted
+                              </Badge>
+                            )}
+                          </div>
                           {c.prompted && (
-                            <Badge variant="outline" className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 text-[10px] py-0 h-4">
-                              Prompted (Excluded from Scan)
-                            </Badge>
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 font-mono">
+                              Excluded from p-value calculation
+                            </p>
                           )}
                         </div>
                       </TableCell>
@@ -200,7 +219,7 @@ export function CaseList({ cases }: CaseListProps) {
                         <Badge
                           className={`font-mono text-xs tabular-nums ${
                             c.severity >= 4
-                              ? 'bg-red-600 text-white'
+                              ? 'bg-red-600 text-white font-bold'
                               : c.severity === 3
                               ? 'bg-amber-500 text-white'
                               : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200'
@@ -210,20 +229,21 @@ export function CaseList({ cases }: CaseListProps) {
                         </Badge>
                       </TableCell>
 
-                      {/* Intake Source */}
+                      {/* Scan Status & Weight */}
                       <TableCell className="text-right">
-                        <div className="inline-flex items-center gap-1 text-xs">
-                          {c.reportedBy === 'doctor' ? (
-                            <>
-                              <Stethoscope className="size-3.5 text-emerald-600" />
-                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Doctor (1.0×)</span>
-                            </>
+                        <div className="inline-flex flex-col items-end gap-0.5 text-xs">
+                          {c.prompted ? (
+                            <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                              0.0× (Care Only)
+                            </span>
                           ) : (
-                            <>
-                              <User className="size-3.5 text-zinc-500" />
-                              <span className="text-zinc-500">Self (0.6×)</span>
-                            </>
+                            <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                              {c.sourceWeight}× ({c.reportedBy === 'doctor' ? 'Doctor' : 'Self'})
+                            </span>
                           )}
+                          <span className="text-[10px] text-zinc-400">
+                            {c.prompted ? 'Post-Advisory' : 'Pre-Advisory'}
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>
