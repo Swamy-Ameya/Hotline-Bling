@@ -280,8 +280,8 @@ export default function RadarPage() {
                         {block.suppressed ? '<3' : block.caseCount}
                       </span>
                       <span className="text-[13px] text-zinc-400 ml-1">cases</span>
-                      <span className={`block text-[12px] font-mono tabular-nums mt-0.5 ${isFlagged ? 'text-red-600 font-medium' : 'text-zinc-400'}`}>
-                        {(block.attackRate * 100).toFixed(1)}% attack rate
+                      <span className={`block text-[12px] font-mono tabular-nums mt-0.5 ${isFlagged ? 'text-red-600 font-semibold' : 'text-zinc-400'}`}>
+                        {isFlagged ? 'Active Outbreak' : hasCases ? 'Under Watch' : 'All Clear'}
                       </span>
                     </div>
                     <ChevronRight className="size-4 text-zinc-300" />
@@ -321,8 +321,8 @@ export default function RadarPage() {
                     {result.elevation.mess.suppressed ? '<3' : result.elevation.mess.caseCount}
                   </span>
                   <span className="text-[13px] text-zinc-400 ml-1">cases</span>
-                  <span className={`block text-[12px] font-mono tabular-nums mt-0.5 ${result.elevation.mess.isFlagged ? 'text-red-600 font-medium' : 'text-zinc-400'}`}>
-                    {(result.elevation.mess.attackRate * 100).toFixed(1)}% attack rate
+                  <span className={`block text-[12px] font-mono tabular-nums mt-0.5 ${result.elevation.mess.isFlagged ? 'text-red-600 font-semibold' : 'text-zinc-400'}`}>
+                    {result.elevation.mess.isFlagged ? 'Food Outbreak' : 'Normal Dining'}
                   </span>
                 </div>
                 <ChevronRight className="size-4 text-zinc-300" />

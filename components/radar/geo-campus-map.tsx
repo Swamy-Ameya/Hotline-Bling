@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { CampusElevation, DetectionResult } from '@/lib/types';
-import { formatCases, formatAttackRate } from './attack-rate-utils';
+import { formatCases } from './attack-rate-utils';
 import { 
   MapPin, 
   Navigation, 
@@ -21,7 +21,10 @@ import {
   Maximize2,
   Trash2,
   X,
-  Layers
+  Layers,
+  Save,
+  Check,
+  Copy
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -42,12 +45,12 @@ export interface StampedLocation {
 
 // Clean MUJ GHS Hostel & Blue Dove Mess positions
 const MUJ_SATELLITE_DEFAULTS: StampedLocation[] = [
-  { id: 'mess', name: 'Blue Dove Mess & Central Dining', shortLabel: 'Blue Dove Mess', type: 'mess', lat: 26.84365, lng: 75.56580 },
+  { id: 'mess', name: 'Blue Dove Mess & Dining', shortLabel: 'Blue Dove Mess', type: 'mess', lat: 26.84365, lng: 75.56580 },
   { id: 'tank-A', blockKey: 'A', name: 'B1 – Boys Hostel', shortLabel: 'Block B1', type: 'block', lat: 26.84370, lng: 75.56370 },
   { id: 'tank-B', blockKey: 'B', name: 'B2 – Boys Hostel', shortLabel: 'Block B2', type: 'block', lat: 26.84390, lng: 75.56445 },
   { id: 'tank-C', blockKey: 'C', name: 'G1 – Girls Hostel', shortLabel: 'Block G1', type: 'block', lat: 26.84275, lng: 75.56360 },
   { id: 'tank-D', blockKey: 'D', name: 'G2 – Girls Hostel', shortLabel: 'Block G2', type: 'block', lat: 26.84260, lng: 75.56450 },
-  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'Main RO Plant', type: 'water', lat: 26.84430, lng: 75.56510 },
+  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'RO Plant', type: 'water', lat: 26.84430, lng: 75.56510 },
 ];
 
 function latLngToTile(lat: number, lng: number, zoom: number) {
@@ -72,6 +75,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [isBaked, setIsBaked] = useState(false);
   
   // Basemap View: 'light' (CartoDB Light Positron), 'satellite' (Pure Sat), 'dark' (Carto Dark)
   const [mapStyle, setMapStyle] = useState<'light' | 'satellite' | 'dark'>('light');
@@ -94,7 +98,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v10');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v11');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -104,7 +108,25 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v10', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v11', JSON.stringify(updated));
+    } catch {}
+  };
+
+  // Bake & lock current pin layout as default
+  const handleBakeLayout = () => {
+    try {
+      localStorage.setItem('outbreak_radar_geo_pins_v11', JSON.stringify(locations));
+      localStorage.setItem('outbreak_radar_geo_baked_layout', JSON.stringify(locations));
+      setIsBaked(true);
+      setTimeout(() => setIsBaked(false), 3000);
+    } catch {}
+  };
+
+  const handleCopyLayoutJson = () => {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(locations, null, 2));
+      setIsBaked(true);
+      setTimeout(() => setIsBaked(false), 3000);
     } catch {}
   };
 
@@ -113,7 +135,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v10');
+      localStorage.removeItem('outbreak_radar_geo_pins_v11');
     } catch {}
   };
 
@@ -271,7 +293,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     const centerTile = latLngToTile(center.lat, center.lng, zoom);
     const centerPixel = latLngToPixel(center.lat, center.lng, zoom);
     const containerW = mapContainerRef.current ? mapContainerRef.current.clientWidth : 800;
-    const containerH = mapContainerRef.current ? mapContainerRef.current.clientHeight : 520;
+    const containerH = mapContainerRef.current ? mapContainerRef.current.clientHeight : 540;
 
     const tiles = [];
     const radius = 2; // 5x5 tile grid
@@ -322,15 +344,15 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     : null;
 
   return (
-    <Card className="border border-zinc-200/80 shadow-xs overflow-hidden bg-white text-zinc-900 relative rounded-2xl">
+    <Card className="border border-zinc-200/80 shadow-ao-card overflow-hidden bg-white text-zinc-900 relative rounded-2xl">
       {/* Header & Main Toolbelt */}
-      <CardHeader className="py-4 px-6 border-b border-zinc-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <CardHeader className="py-4 px-6 border-b border-zinc-100 bg-white/95 backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-zinc-900 text-white flex items-center justify-center">
+            <div className="p-1.5 rounded-lg bg-zinc-900 text-white flex items-center justify-center shadow-xs">
               <MapPin className="size-4" />
             </div>
-            <CardTitle className="text-base font-semibold tracking-tight text-zinc-900">
+            <CardTitle className="text-base font-semibold tracking-tight text-zinc-900 text-ao-subtle">
               Campus Heatmap &amp; Infrastructure
             </CardTitle>
             <Badge variant="outline" className="text-[11px] font-mono border-zinc-200 text-zinc-500 py-0.5 px-2">
@@ -344,8 +366,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Basemap Style Switcher */}
-          <div className="p-0.5 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center text-xs">
+          {/* Basemap Style Switcher (Translucent Glass) */}
+          <div className="p-0.5 rounded-xl bg-zinc-100/90 backdrop-blur-md border border-zinc-200/80 flex items-center text-xs">
             <button
               onClick={() => setMapStyle('light')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -378,11 +400,25 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             </button>
           </div>
 
+          {/* BAKE / LOCK LAYOUT BUTTON */}
+          <Button
+            size="sm"
+            onClick={handleBakeLayout}
+            className={`text-xs h-8 px-3 gap-1.5 rounded-xl border transition-all ${
+              isBaked
+                ? 'bg-emerald-600 border-emerald-600 text-white font-semibold shadow-xs'
+                : 'bg-white/80 hover:bg-white text-zinc-700 border-zinc-200/80 backdrop-blur-md shadow-xs'
+            }`}
+          >
+            {isBaked ? <Check className="size-3.5" /> : <Save className="size-3.5 text-zinc-500" />}
+            <span>{isBaked ? 'Baked!' : 'Bake Layout'}</span>
+          </Button>
+
           {/* STAMP BUTTON */}
           <Button
             size="sm"
             onClick={() => setIsStampModalOpen(true)}
-            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs h-8 px-3.5 gap-1.5 shadow-xs rounded-xl"
+            className="bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs h-8 px-3.5 gap-1.5 shadow-ao-button rounded-xl"
           >
             <Plus className="size-3.5" />
             <span>Stamp Location</span>
@@ -393,7 +429,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             size="sm"
             variant="outline"
             onClick={handleGetGps}
-            className="text-xs h-8 gap-1.5 border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 rounded-xl"
+            className="text-xs h-8 gap-1.5 border-zinc-200/80 bg-white/80 hover:bg-white text-zinc-700 backdrop-blur-md rounded-xl shadow-xs"
           >
             <Navigation className="size-3.5 text-blue-600" />
             <span>My GPS</span>
@@ -411,8 +447,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
       </CardHeader>
 
       <CardContent className="p-5 space-y-4">
-        {/* Quick Node Pin Strip */}
-        <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
+        {/* Quick Node Pin Strip with Translucent Glass Aesthetic */}
+        <div className="p-3 rounded-2xl bg-zinc-50/80 backdrop-blur-md border border-zinc-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs shadow-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-500 text-[11px] uppercase tracking-wider">
             <Crosshair className="size-3.5 text-zinc-400" />
             <span>Campus Nodes:</span>
@@ -434,12 +470,12 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                     setSelectedPinId(loc.id);
                     setActiveStampTarget(isActive ? null : loc.id);
                   }}
-                  className={`h-7 px-3 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 border ${
+                  className={`h-7.5 px-3 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 border backdrop-blur-md active:scale-[0.98] ${
                     isActive
-                      ? 'bg-amber-500 text-zinc-950 font-semibold border-amber-500 shadow-xs'
+                      ? 'bg-amber-500 text-zinc-950 font-semibold border-amber-500 shadow-sm'
                       : isSelected
-                      ? 'border-zinc-900 text-zinc-900 font-semibold bg-white shadow-xs'
-                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900'
+                      ? 'border-zinc-900 text-zinc-900 font-semibold bg-white/95 shadow-sm'
+                      : 'border-zinc-200/80 bg-white/65 hover:bg-white/95 text-zinc-700 hover:border-zinc-300 shadow-xs'
                   }`}
                 >
                   {isBlock && <Building2 className="size-3 text-zinc-500" />}
@@ -454,7 +490,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
         {/* Stamping Instruction Banner */}
         {activeStampTarget && (
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between shadow-xs">
+          <div className="p-3 rounded-xl bg-amber-50/90 backdrop-blur-md border border-amber-200 text-amber-900 text-xs flex items-center justify-between shadow-xs">
             <span className="flex items-center gap-2">
               <Crosshair className="size-4 text-amber-600" />
               <span>
@@ -466,7 +502,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             </span>
             <button
               onClick={() => setActiveStampTarget(null)}
-              className="text-xs text-amber-700 hover:text-amber-900 font-medium px-2.5 py-1 rounded-md bg-amber-100"
+              className="text-xs text-amber-700 hover:text-amber-900 font-medium px-2.5 py-1 rounded-md bg-amber-100/80"
             >
               Cancel
             </button>
@@ -490,7 +526,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             setMousePos(null);
           }}
           onClick={handleMapClick}
-          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-zinc-200 select-none ${
+          className={`relative w-full aspect-[16/10] max-h-[540px] rounded-2xl overflow-hidden border border-zinc-200/90 select-none ${
             mapStyle === 'light' ? 'bg-[#f4f3f0]' : 'bg-[#09090b]'
           } shadow-inner ${
             activeStampTarget ? 'cursor-crosshair ring-2 ring-amber-500' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
@@ -499,7 +535,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           {/* Base Tiles */}
           {renderTiles()}
 
-          {/* VIBRANT RADIANT HEATMAP RINGS */}
+          {/* EXPANSIVE RADIANT HEATMAPS FOR OUTBREAK SCENARIO */}
           {locations.map((loc) => {
             const isBlock = loc.type === 'block';
             const isMess = loc.type === 'mess';
@@ -528,17 +564,21 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 }}
                 className="absolute z-10 pointer-events-none flex items-center justify-center"
               >
-                {/* Non-Blurry Clean Radial Infection Ring */}
+                {/* Expansive High-Impact Heatwave Halo */}
                 {isFlagged ? (
                   <div className="relative flex items-center justify-center">
-                    <span className="w-24 h-24 rounded-full bg-red-500/25 blur-sm animate-pulse" />
-                    <span className="absolute w-14 h-14 rounded-full bg-red-600/35 border border-red-500/60" />
-                    <span className="absolute w-10 h-10 rounded-full border-2 border-red-500 animate-ping" />
+                    {/* Tier 3 Outermost Radiant Ambient Spread (200px) */}
+                    <span className="w-52 h-52 rounded-full bg-red-500/20 blur-xl animate-pulse" />
+                    {/* Tier 2 Middle Intense Heat Zone (120px) */}
+                    <span className="absolute w-32 h-32 rounded-full bg-red-600/35 blur-md" />
+                    {/* Tier 1 Core Outbreak Ring (72px) */}
+                    <span className="absolute w-20 h-20 rounded-full border-2 border-red-500/80 bg-red-500/20 animate-ping" />
+                    <span className="absolute w-14 h-14 rounded-full border border-red-400/90" />
                   </div>
                 ) : (
                   <div className="relative flex items-center justify-center">
-                    <span className="w-14 h-14 rounded-full bg-amber-500/20 blur-xs" />
-                    <span className="absolute w-8 h-8 rounded-full border border-amber-500/50" />
+                    <span className="w-28 h-28 rounded-full bg-amber-500/20 blur-md" />
+                    <span className="absolute w-16 h-16 rounded-full border border-amber-500/50" />
                   </div>
                 )}
               </div>
@@ -658,13 +698,13 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           <div className="absolute right-3 bottom-3 z-30 flex flex-col gap-1">
             <button
               onClick={() => setZoom((z) => Math.min(19, z + 1))}
-              className="size-7 rounded-lg bg-white border border-zinc-200 text-zinc-800 hover:bg-zinc-100 flex items-center justify-center shadow-xs"
+              className="size-7 rounded-lg bg-white/90 backdrop-blur-md border border-zinc-200 text-zinc-800 hover:bg-white flex items-center justify-center shadow-xs"
             >
               <Plus className="size-3.5" />
             </button>
             <button
               onClick={() => setZoom((z) => Math.max(15, z - 1))}
-              className="size-7 rounded-lg bg-white border border-zinc-200 text-zinc-800 hover:bg-zinc-100 flex items-center justify-center shadow-xs"
+              className="size-7 rounded-lg bg-white/90 backdrop-blur-md border border-zinc-200 text-zinc-800 hover:bg-white flex items-center justify-center shadow-xs"
             >
               <Minus className="size-3.5" />
             </button>
@@ -674,13 +714,13 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 setZoom(17);
               }}
               title="Recenter GHS Hostels"
-              className="size-7 rounded-lg bg-white border border-zinc-200 text-zinc-800 hover:bg-zinc-100 flex items-center justify-center shadow-xs"
+              className="size-7 rounded-lg bg-white/90 backdrop-blur-md border border-zinc-200 text-zinc-800 hover:bg-white flex items-center justify-center shadow-xs"
             >
               <Maximize2 className="size-3.5" />
             </button>
           </div>
 
-          <div className="absolute left-3 bottom-3 z-30 px-2.5 py-1 rounded-full bg-white/90 border border-zinc-200 text-[11px] font-mono text-zinc-600 shadow-xs">
+          <div className="absolute left-3 bottom-3 z-30 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-zinc-200 text-[11px] font-mono text-zinc-600 shadow-xs">
             {center.lat.toFixed(5)}° N, {center.lng.toFixed(5)}° E · Zoom {zoom}
           </div>
         </div>
@@ -736,23 +776,21 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             {selectedBlockData && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="p-2.5 rounded-lg bg-white border border-zinc-200">
-                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Total Cases</span>
+                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Sick Reports</span>
                   <span className="font-bold text-zinc-900 text-xs">
                     {formatCases(selectedBlockData.caseCount, selectedBlockData.suppressed)}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-zinc-200">
-                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Attack Rate</span>
-                  <span className="font-bold text-zinc-900 text-xs">
-                    {formatAttackRate(selectedBlockData.attackRate)}
-                  </span>
+                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Monitoring</span>
+                  <span className="font-bold text-zinc-900 text-xs">5 Floors Active</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-zinc-200">
-                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Floors</span>
-                  <span className="font-bold text-zinc-900 text-xs">5 Floors Monitored</span>
+                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Capacity</span>
+                  <span className="font-bold text-zinc-900 text-xs">180 Students</span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-zinc-200">
-                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Water Tank</span>
+                  <span className="text-zinc-400 block text-[10px] uppercase font-medium">Water Supply</span>
                   <span className="font-bold text-zinc-900 text-xs">{selectedBlockData.tankName}</span>
                 </div>
               </div>
