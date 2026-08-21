@@ -207,6 +207,25 @@ async function capture() {
     console.log(`Saved screenshot to: ${filePath}`);
   }
 
+  // Capture Student Portal view
+  console.log('Capturing Student Portal view for report-form-mobile.png...');
+  await cdp.send('Runtime.evaluate', {
+    expression: `
+      const studentBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Student Portal'));
+      if (studentBtn) studentBtn.click();
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    `,
+  });
+  await wait(1000);
+
+  const { data: studentData } = await cdp.send('Page.captureScreenshot', {
+    format: 'png',
+    captureBeyondViewport: false,
+  });
+  const studentPath = path.join(outDir, 'report-form-mobile.png');
+  fs.writeFileSync(studentPath, Buffer.from(studentData, 'base64'));
+  console.log(`Saved screenshot to: ${studentPath}`);
+
   cdp.close();
   chromeProcess.kill();
   nextProcess.kill();

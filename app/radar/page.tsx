@@ -3,11 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fixtureFor } from '@/lib/detect/fixture';
 import { SCENARIOS, type ScenarioId, type DetectionResult } from '@/lib/types';
+import { CampusMapView } from '@/components/radar/campus-map-view';
 import { ElevationView } from '@/components/radar/elevation-view';
 import { ContrastPanel } from '@/components/radar/contrast-panel';
 import { ClusterCards } from '@/components/radar/cluster-cards';
 import { ScenarioBar } from '@/components/radar/scenario-bar';
+import { StudentView } from '@/components/radar/student-view';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Radar,
   Clock,
@@ -17,18 +20,28 @@ import {
   ShieldCheck,
   AlertTriangle,
   Radio,
+  Map as MapIcon,
+  Building2,
+  GraduationCap,
+  Shield,
+  Send,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function RadarPage() {
+  const [role, setRole] = useState<'warden' | 'student'>('warden');
+  const [viewMode, setViewMode] = useState<'map' | 'elevation'>('map');
   const [selectedScenario, setSelectedScenario] = useState<ScenarioId>('filter_fault');
   const [result, setResult] = useState<DetectionResult>(() => fixtureFor('filter_fault'));
   const [isScanning, setIsScanning] = useState(false);
   const [isLiveApi, setIsLiveApi] = useState(false);
+  const [advisorySent, setAdvisorySent] = useState(false);
 
   // Switch scenario via API with fixture fallback
   const handleScenarioChange = useCallback(async (scenario: ScenarioId) => {
     setSelectedScenario(scenario);
     setIsScanning(true);
+    setAdvisorySent(false);
 
     try {
       // 1. Seed the scenario in the API store
@@ -59,6 +72,7 @@ export default function RadarPage() {
   // Run detection on demand
   const handleRunDetection = useCallback(async () => {
     setIsScanning(true);
+    setAdvisorySent(false);
 
     try {
       const detectRes = await fetch('/api/detect', { method: 'POST' });
@@ -69,7 +83,6 @@ export default function RadarPage() {
       setIsLiveApi(true);
     } catch (err) {
       console.warn('API /api/detect failed; falling back to fixture:', err);
-      // Small simulated latency for fixture mode
       await new Promise((r) => setTimeout(r, 400));
       setResult(fixtureFor(selectedScenario));
       setIsLiveApi(false);
@@ -83,7 +96,10 @@ export default function RadarPage() {
     handleScenarioChange('filter_fault');
   }, [handleScenarioChange]);
 
-  const hasClusters = result.clusters && result.clusters.length > 0;
+  const handleBroadcastAdvisory = () => {
+    setAdvisorySent(true);
+    setTimeout(() => setAdvisorySent(false), 5000);
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50/50 dark:bg-black font-sans text-zinc-900 dark:text-zinc-100 overflow-x-hidden">
@@ -121,100 +137,196 @@ export default function RadarPage() {
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="flex flex-wrap items-center gap-2 text-xs font-mono tabular-nums">
-            <div className="px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-              <Clock className="h-3.5 w-3.5 text-zinc-400" />
-              <span>Window: <strong>{result.windowHours}h</strong></span>
+          {/* Role Switcher & Live Quick Metrics */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Role Switcher Pill */}
+            <div className="p-1 rounded-xl bg-zinc-200/80 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRole('warden')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  role === 'warden'
+                    ? 'bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                }`}
+              >
+                <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Health / Warden Hub</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('student')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  role === 'student'
+                    ? 'bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                }`}
+              >
+                <GraduationCap className="h-3.5 w-3.5 text-blue-500" />
+                <span>Student Portal</span>
+              </button>
             </div>
-            <div className="px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-              <Users className="h-3.5 w-3.5 text-zinc-400" />
-              <span>Cases: <strong>{result.totalCases}</strong> / {result.totalPopulation}</span>
-            </div>
-            <div className="px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-              <Network className="h-3.5 w-3.5 text-zinc-400" />
-              <span>Nodes: <strong>{result.nodesTested}</strong></span>
-            </div>
-            <div className="px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-              <Binary className="h-3.5 w-3.5 text-zinc-400" />
-              <span>FDR: <strong>q={result.fdrQ}</strong></span>
+
+            {/* Quick Metrics Bar */}
+            <div className="flex items-center gap-2 text-xs font-mono tabular-nums">
+              <div className="px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                <Users className="h-3.5 w-3.5 text-zinc-400" />
+                <span>Sick: <strong>{result.totalCases}</strong> / {result.totalPopulation}</span>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Data Pipeline Pillars Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
-              <Users className="h-3.5 w-3.5" />
+        {/* STUDENT ROLE VIEW */}
+        {role === 'student' ? (
+          <StudentView result={result} />
+        ) : (
+          /* WARDEN / HEALTH CENTER ROLE VIEW */
+          <div className="space-y-6">
+            {/* Data Pipeline Pillars Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                  <Users className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Clinic &amp; Student Reports</span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Doctor (1.0) · Mobile (0.6)</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Mess Menu &amp; Timing</span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Breakfast · Lunch · Dinner</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                  <Network className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Hostel Allocation DB</span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">4 Blocks · 20 Floors</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+                  <Radio className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Targeted Push Advisories</span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Direct to affected block</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Clinic &amp; Self-Reports</span>
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Doctor (1.0) · Student (0.6)</span>
+
+            {/* Scenario Switcher Bar */}
+            <ScenarioBar
+              selectedScenario={selectedScenario}
+              onSelectScenario={handleScenarioChange}
+              onRunDetection={handleRunDetection}
+              isScanning={isScanning}
+            />
+
+            {/* Quick 1-Click Targeted Broadcast Action */}
+            {result.topCluster && result.topCluster.status !== 'watch' && (
+              <div className="p-3.5 rounded-xl border border-red-500/40 bg-red-500/10 dark:bg-red-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold text-red-900 dark:text-red-200 block">
+                      Active Outbreak Alert: {result.topCluster.name}
+                    </span>
+                    <span className="text-[11px] text-red-700 dark:text-red-300">
+                      Confidence: 99.9% ({result.topCluster.observed} cases against {result.topCluster.expected.toFixed(1)} expected)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {advisorySent ? (
+                    <Badge className="bg-emerald-600 text-white text-xs py-1.5 px-3 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Push Advisory Dispatched to Students!
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleBroadcastAdvisory}
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-1.5 h-8 rounded-lg shadow-sm flex items-center gap-1.5"
+                    >
+                      <Send className="h-3.5 w-3.5" /> Broadcast Advisory to Block
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Main Visualizer: View Mode Toggle */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Campus Visualizer Mode:
+                  </span>
+                </div>
+                <div className="p-1 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('map')}
+                    className={`px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 ${
+                      viewMode === 'map'
+                        ? 'bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                        : 'text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <MapIcon className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>2D Campus Heatmap</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('elevation')}
+                    className={`px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 ${
+                      viewMode === 'elevation'
+                        ? 'bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                        : 'text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <Building2 className="h-3.5 w-3.5 text-blue-500" />
+                    <span>Block Elevation Grid</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Render Selected Visualizer */}
+              {viewMode === 'map' ? (
+                <CampusMapView elevation={result.elevation} result={result} />
+              ) : (
+                <ElevationView elevation={result.elevation} />
+              )}
             </div>
+
+            {/* Contrast Panel: Permutation Test vs. Naive Threshold */}
+            <section aria-label="Statistical Contrast Panel">
+              <ContrastPanel result={result} />
+            </section>
+
+            {/* Active Cluster Cards & Deliberate Empty State */}
+            <section aria-label="Detected Clusters">
+              <ClusterCards clusters={result.clusters} />
+            </section>
           </div>
-
-          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-              <Clock className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Mess Menu &amp; Timing</span>
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Breakfast · Lunch · Dinner</span>
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-              <Network className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Hostel Allocation DB</span>
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">4 Blocks · Day Scholars</span>
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
-              <Radio className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Targeted Push Advisories</span>
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Scoped to block &amp; meal</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Scenario Switcher Bar */}
-        <ScenarioBar
-          selectedScenario={selectedScenario}
-          onSelectScenario={handleScenarioChange}
-          onRunDetection={handleRunDetection}
-          isScanning={isScanning}
-        />
-
-        {/* Main Dashboard Layout */}
-        <main className="space-y-6">
-          {/* Hero Visual: Campus Infrastructure Elevation */}
-          <section aria-label="Campus Elevation" className="w-full overflow-x-auto">
-            <ElevationView elevation={result.elevation} />
-          </section>
-
-          {/* Contrast Panel: Permutation Test vs. Naive Threshold */}
-          <section aria-label="Statistical Contrast Panel">
-            <ContrastPanel result={result} />
-          </section>
-
-          {/* Active Cluster Cards & Deliberate Empty State */}
-          <section aria-label="Detected Clusters">
-            <ClusterCards clusters={result.clusters} />
-          </section>
-        </main>
+        )}
 
         {/* Footer */}
         <footer className="pt-8 pb-4 border-t border-zinc-200 dark:border-zinc-800 text-center text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
           <p>
-            Outbreak Radar • Permutation-tested spatial scan statistics for campus public health
+            Outbreak Radar • Campus early warning surveillance system for college hostels &amp; PGs
           </p>
           <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
             Compliant with DPDP Act 2023 privacy thresholds (&lt;3 cases suppressed) • Manipal University Jaipur

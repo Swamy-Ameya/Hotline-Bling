@@ -76,17 +76,9 @@ export function ElevationView({ elevation }: ElevationViewProps) {
           ))}
         </div>
 
-        {/* Mess and Day Scholars row spanning full width below blocks */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-2.5 sm:gap-3 pt-1">
-          {/* Central Mess Bar spanning 3 columns on large screens */}
-          <div className="lg:col-span-3">
-            <MessBar mess={mess} maxAttackRate={maxAttackRate} />
-          </div>
-
-          {/* Day Scholars Control Group Tile */}
-          <div className="lg:col-span-1">
-            <DayScholarsTile dayScholars={dayScholars} maxAttackRate={maxAttackRate} />
-          </div>
+        {/* Central Mess Bar spanning full width below blocks */}
+        <div className="pt-1">
+          <MessBar mess={mess} maxAttackRate={maxAttackRate} />
         </div>
 
         {/* Privacy Note Footer */}

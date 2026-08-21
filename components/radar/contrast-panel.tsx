@@ -34,17 +34,17 @@ export function ContrastPanel({ result }: ContrastPanelProps) {
             </div>
             <div>
               <CardTitle className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                Detection Arbitrage: Permutation Test vs. Naive Threshold
+                Decision Contrast: Smart Permutation Engine vs. Dumb Threshold Alarm
               </CardTitle>
               <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
-                Demonstrating how 999 spatial Monte Carlo shuffles prevent false-positive campus panics.
+                How 999 random spatial shuffles prevent false campus panics while catching real outbreaks Day 1.
               </CardDescription>
             </div>
           </div>
 
           {isCoincidence && isWatchOnly && (
             <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-800 text-xs font-semibold px-2.5 py-1">
-              Coincidence Trap Defended
+              False Alarm Prevented (Normal Variance)
             </Badge>
           )}
         </div>
@@ -54,7 +54,7 @@ export function ContrastPanel({ result }: ContrastPanelProps) {
         {/* Headline verbatim banner */}
         <div className="p-3.5 rounded-lg bg-zinc-100/90 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/80 text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed font-medium">
           <span className="text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block font-semibold mb-1">
-            Engine Headline
+            Engine Diagnosis
           </span>
           {headline}
         </div>
