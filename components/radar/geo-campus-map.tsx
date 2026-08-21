@@ -21,7 +21,11 @@ import {
   Maximize2,
   Trash2,
   X,
-  Layers
+  Layers,
+  GraduationCap,
+  Trees,
+  Compass,
+  Milestone
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,14 +44,30 @@ export interface StampedLocation {
   lng: number;
 }
 
-// Clean MUJ GHS Hostel & Mess positions
+export interface CampusLandmark {
+  id: string;
+  name: string;
+  type: 'road' | 'academic' | 'facility' | 'area';
+  lat: number;
+  lng: number;
+}
+
+// Real Manipal University Jaipur (MUJ) GHS Hostel & Mess positions
 const MUJ_SATELLITE_DEFAULTS: StampedLocation[] = [
-  { id: 'mess', name: 'Old Mess & Central Dining', shortLabel: 'Old Mess', type: 'mess', lat: 26.84365, lng: 75.56580 },
-  { id: 'tank-A', blockKey: 'A', name: 'Hostel Block A', shortLabel: 'Block A', type: 'block', lat: 26.84370, lng: 75.56370 },
-  { id: 'tank-B', blockKey: 'B', name: 'Hostel Block B', shortLabel: 'Block B', type: 'block', lat: 26.84390, lng: 75.56445 },
-  { id: 'tank-C', blockKey: 'C', name: 'Hostel Block C', shortLabel: 'Block C', type: 'block', lat: 26.84275, lng: 75.56360 },
-  { id: 'tank-D', blockKey: 'D', name: 'Hostel Block D', shortLabel: 'Block D', type: 'block', lat: 26.84260, lng: 75.56450 },
-  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'Main RO Tank', type: 'water', lat: 26.84430, lng: 75.56510 },
+  { id: 'mess', name: 'Old Mess & Dining Hall', shortLabel: 'Old Mess', type: 'mess', lat: 26.84365, lng: 75.56580 },
+  { id: 'tank-A', blockKey: 'A', name: 'GHS Hostel Block A', shortLabel: 'Block A', type: 'block', lat: 26.84370, lng: 75.56370 },
+  { id: 'tank-B', blockKey: 'B', name: 'GHS Hostel Block B', shortLabel: 'Block B', type: 'block', lat: 26.84390, lng: 75.56445 },
+  { id: 'tank-C', blockKey: 'C', name: 'GHS Hostel Block C', shortLabel: 'Block C', type: 'block', lat: 26.84275, lng: 75.56360 },
+  { id: 'tank-D', blockKey: 'D', name: 'GHS Hostel Block D', shortLabel: 'Block D', type: 'block', lat: 26.84260, lng: 75.56450 },
+  { id: 'water-main', name: 'Main Campus RO Supply', shortLabel: 'Main RO Tank', type: 'water', lat: 26.84430, lng: 75.56510 },
+];
+
+// Ground-truth MUJ Campus Roads & Physical Landmarks
+const MUJ_LANDMARKS: CampusLandmark[] = [
+  { id: 'road-main', name: 'Manipal University Marg', type: 'road', lat: 26.84370, lng: 75.56510 },
+  { id: 'academic-main', name: 'MUJ Academic Quad & Dome', type: 'academic', lat: 26.84440, lng: 75.56700 },
+  { id: 'ghs-quad', name: 'GHS Hostel Central Quad', type: 'area', lat: 26.84330, lng: 75.56405 },
+  { id: 'student-hub', name: 'Student Cafeteria & Plaza', type: 'facility', lat: 26.84430, lng: 75.56430 },
 ];
 
 function latLngToTile(lat: number, lng: number, zoom: number) {
@@ -73,11 +93,9 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   
-  // Real Vector / Satellite Map Types:
-  // 'light' = CartoDB Positron Light (Apple/Uber clean style)
-  // 'satellite' = High-Res Google Satellite (No labels)
-  // 'dark' = CartoDB Dark Canvas
-  const [mapStyle, setMapStyle] = useState<'light' | 'satellite' | 'dark'>('light');
+  // Basemap View: 'hybrid' (Real Satellite + Roads/Streets), 'satellite' (Pure Sat), 'streets' (OSM)
+  const [mapLayer, setMapLayer] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
+  const [showLandmarks, setShowLandmarks] = useState(true);
 
   // Custom Node Modal Dialog State
   const [isStampModalOpen, setIsStampModalOpen] = useState(false);
@@ -97,7 +115,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v7');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v8');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -107,7 +125,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v7', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v8', JSON.stringify(updated));
     } catch {}
   };
 
@@ -116,7 +134,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v7');
+      localStorage.removeItem('outbreak_radar_geo_pins_v8');
     } catch {}
   };
 
@@ -269,7 +287,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     };
   };
 
-  // Render high-res real vector/satellite basemap tiles
+  // Render high-res real satellite and hybrid tiles
   const renderTiles = () => {
     const centerTile = latLngToTile(center.lat, center.lng, zoom);
     const centerPixel = latLngToPixel(center.lat, center.lng, zoom);
@@ -290,22 +308,21 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         const screenX = containerW / 2 + (tilePixelX - centerPixel.x);
         const screenY = containerH / 2 + (tilePixelY - centerPixel.y);
 
-        // Real basemaps without negative inversion photo bugs
         let tileUrl = '';
-        if (mapStyle === 'light') {
-          // Clean, crisp Apple/Uber style light canvas
-          tileUrl = `https://a.basemaps.cartocdn.com/light_nolabels/${zoom}/${tileX}/${tileY}.png`;
-        } else if (mapStyle === 'satellite') {
-          // Real photorealistic Google satellite (no labels)
+        if (mapLayer === 'hybrid') {
+          // Google Hybrid: High-Res Real Satellite Photos + Overlay Roads
+          tileUrl = `https://mt1.google.com/vt/lyrs=y&x=${tileX}&y=${tileY}&z=${zoom}`;
+        } else if (mapLayer === 'satellite') {
+          // Google Pure Satellite: Natural Photographic View
           tileUrl = `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
         } else {
-          // Clean Dark Canvas
-          tileUrl = `https://a.basemaps.cartocdn.com/dark_nolabels/${zoom}/${tileX}/${tileY}.png`;
+          // Clean Voyager Streets with Landmarks
+          tileUrl = `https://a.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tileX}/${tileY}.png`;
         }
 
         tiles.push(
           <img
-            key={`${tileX}-${tileY}-${zoom}-${mapStyle}`}
+            key={`${tileX}-${tileY}-${zoom}-${mapLayer}`}
             src={tileUrl}
             alt=""
             loading="lazy"
@@ -338,52 +355,63 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               <MapPin className="size-3.5" />
             </div>
             <CardTitle className="text-sm sm:text-base font-bold tracking-tight text-zinc-100">
-              Campus Heatmap &amp; Location Stamper
+              Campus Satellite Outbreak Map (Manipal University Jaipur)
             </CardTitle>
             <Badge variant="outline" className="text-[10px] font-mono border-white/10 text-zinc-400 py-0 h-4">
-              {mapStyle === 'light' ? 'Light Canvas' : mapStyle === 'satellite' ? 'HD Satellite' : 'Dark Canvas'}
+              {mapLayer === 'hybrid' ? 'Satellite + Roads' : mapLayer === 'satellite' ? 'Photo Sat' : 'Streets'}
             </Badge>
           </div>
           <CardDescription className="text-xs text-zinc-400 mt-0.5">
-            Georeferenced campus layout with radiant infection heatmaps and manual building stamping.
+            Photorealistic satellite view showing real GHS Hostel blocks, Old Mess, Manipal University Marg, and live outbreak heat.
           </CardDescription>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Basemap Style Switcher */}
+          {/* Layer Switcher */}
           <div className="p-0.5 rounded-lg bg-zinc-800/90 border border-white/10 flex items-center text-xs">
             <button
-              onClick={() => setMapStyle('light')}
+              onClick={() => setMapLayer('hybrid')}
               className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
-                mapStyle === 'light'
-                  ? 'bg-white text-zinc-950 font-bold shadow-xs'
+                mapLayer === 'hybrid'
+                  ? 'bg-zinc-700 text-white font-bold shadow-xs'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Light
+              Hybrid
             </button>
             <button
-              onClick={() => setMapStyle('satellite')}
+              onClick={() => setMapLayer('satellite')}
               className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
-                mapStyle === 'satellite'
+                mapLayer === 'satellite'
                   ? 'bg-zinc-700 text-white font-bold'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Satellite
+              Photo Sat
             </button>
             <button
-              onClick={() => setMapStyle('dark')}
+              onClick={() => setMapLayer('streets')}
               className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
-                mapStyle === 'dark'
+                mapLayer === 'streets'
                   ? 'bg-zinc-700 text-white font-bold'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Dark
+              Streets
             </button>
           </div>
+
+          {/* Landmark Overlay Toggle */}
+          <Button
+            size="sm"
+            variant={showLandmarks ? 'secondary' : 'outline'}
+            onClick={() => setShowLandmarks(!showLandmarks)}
+            className="text-xs h-7.5 gap-1 border-white/10 text-zinc-200"
+          >
+            <Milestone className="size-3 text-amber-400" />
+            <span>Landmarks {showLandmarks ? 'ON' : 'OFF'}</span>
+          </Button>
 
           {/* STAMP BUTTON */}
           <Button
@@ -422,7 +450,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         <div className="p-2 rounded-xl bg-zinc-900/80 border border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-300 text-[11px] uppercase tracking-wider">
             <Crosshair className="size-3 text-amber-400" />
-            <span>Campus Pins:</span>
+            <span>Hostel Pins:</span>
           </div>
 
           <div className="flex items-center gap-1 flex-wrap">
@@ -465,7 +493,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             <span className="flex items-center gap-1.5">
               <Crosshair className="size-3.5 text-amber-400" />
               <span>
-                <strong>Click anywhere on the map</strong> to place{' '}
+                <strong>Click anywhere on the satellite view</strong> to place{' '}
                 <span className="text-white font-bold underline">
                   {locations.find((l) => l.id === activeStampTarget)?.name}
                 </span>.
@@ -486,7 +514,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           </div>
         )}
 
-        {/* Crisp Map Canvas with Radiant Heatmap Rings */}
+        {/* Photorealistic Satellite Map Viewport with Visible Buildings & Roads */}
         <div
           ref={mapContainerRef}
           onMouseDown={handleMouseDown}
@@ -497,13 +525,11 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             setMousePos(null);
           }}
           onClick={handleMapClick}
-          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-white/[0.08] select-none ${
-            mapStyle === 'light' ? 'bg-[#f4f3f0]' : 'bg-[#09090b]'
-          } shadow-inner ${
+          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-white/[0.08] select-none bg-zinc-950 shadow-inner ${
             activeStampTarget ? 'cursor-crosshair ring-2 ring-amber-500' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
-          {/* Base Tiles (Carto Light, Google Satellite, or Carto Dark) */}
+          {/* Base Tiles (Google Hybrid / Photo Sat / Streets) */}
           {renderTiles()}
 
           {/* VIBRANT RADIANT HEATMAP RINGS */}
@@ -535,24 +561,53 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 }}
                 className="absolute z-10 pointer-events-none flex items-center justify-center"
               >
-                {/* Clean, Non-Glitchy Heat Rings */}
+                {/* Outbreak Heatwave Beacons */}
                 {isFlagged ? (
                   <div className="relative flex items-center justify-center">
-                    <span className="w-24 h-24 rounded-full bg-red-500/25 blur-md animate-pulse" />
-                    <span className="absolute w-14 h-14 rounded-full bg-red-600/35 border border-red-500/60" />
-                    <span className="absolute w-10 h-10 rounded-full border-2 border-red-500 animate-ping" />
+                    <span className="w-24 h-24 rounded-full bg-red-600/35 blur-md animate-pulse" />
+                    <span className="absolute w-14 h-14 rounded-full bg-red-500/40 border border-red-400" />
+                    <span className="absolute w-9 h-9 rounded-full border-2 border-white animate-ping" />
                   </div>
                 ) : (
                   <div className="relative flex items-center justify-center">
-                    <span className="w-14 h-14 rounded-full bg-amber-500/20 blur-sm" />
-                    <span className="absolute w-8 h-8 rounded-full border border-amber-500/50" />
+                    <span className="w-14 h-14 rounded-full bg-amber-500/25 blur-sm" />
+                    <span className="absolute w-8 h-8 rounded-full border border-amber-400/60" />
                   </div>
                 )}
               </div>
             );
           })}
 
-          {/* Stamped Node Markers with Precision 3D Pin Style */}
+          {/* GROUND-TRUTH CAMPUS LANDMARK BADGES */}
+          {showLandmarks &&
+            MUJ_LANDMARKS.map((lm) => {
+              const pos = getMarkerScreenPos(lm.lat, lm.lng);
+              const isRoad = lm.type === 'road';
+              const isAcademic = lm.type === 'academic';
+
+              return (
+                <div
+                  key={lm.id}
+                  style={{
+                    left: `${pos.x}px`,
+                    top: `${pos.y}px`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                  className="absolute z-15 pointer-events-none flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-950/80 backdrop-blur-md border border-white/20 text-[10px] font-semibold text-zinc-300 shadow-md whitespace-nowrap"
+                >
+                  {isRoad ? (
+                    <Milestone className="size-3 text-blue-400" />
+                  ) : isAcademic ? (
+                    <GraduationCap className="size-3 text-purple-400" />
+                  ) : (
+                    <Trees className="size-3 text-emerald-400" />
+                  )}
+                  <span>{lm.name}</span>
+                </div>
+              );
+            })}
+
+          {/* STAMPED HOSTEL & MESS NODE MARKERS */}
           {locations.map((loc) => {
             const isBlock = loc.type === 'block';
             const isMess = loc.type === 'mess';
@@ -592,13 +647,13 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               >
                 {/* Precision Drop Pin Icon */}
                 <div
-                  className={`relative flex items-center justify-center rounded-full p-1.5 shadow-md border-2 transition-all ${
-                    isSelected ? 'scale-115 ring-2 ring-zinc-950' : 'hover:scale-105'
+                  className={`relative flex items-center justify-center rounded-full p-1.5 shadow-lg border-2 transition-all ${
+                    isSelected ? 'scale-115 ring-2 ring-white' : 'hover:scale-105'
                   } ${
                     isFlagged
                       ? 'bg-red-600 border-white text-white'
                       : cases > 0
-                      ? 'bg-amber-500 border-zinc-900 text-zinc-950'
+                      ? 'bg-amber-500 border-zinc-950 text-zinc-950'
                       : isMess
                       ? 'bg-amber-600 border-white text-white'
                       : isWater
@@ -626,10 +681,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   }`}
                 />
 
-                {/* Micro Label Tag (High contrast dark pill) */}
-                <div className="mt-0.5 px-2 py-0.5 rounded-full bg-zinc-950/90 backdrop-blur-md border border-white/20 text-[10px] font-mono font-bold text-zinc-100 flex items-center gap-1 shadow-md whitespace-nowrap">
+                {/* Stamped Building Name Tag */}
+                <div className="mt-0.5 px-2 py-0.5 rounded-full bg-zinc-950/95 backdrop-blur-md border border-white/20 text-[10px] font-mono font-bold text-zinc-100 flex items-center gap-1 shadow-lg whitespace-nowrap">
                   <span>{loc.shortLabel}</span>
-                  {isFlagged && <span className="text-red-400 font-extrabold">• ALERT</span>}
+                  {isFlagged && <span className="text-red-400 font-extrabold">• OUTBREAK</span>}
                 </div>
               </div>
             );
