@@ -77,8 +77,8 @@ export default async function ClusterDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-[#fafafa] text-zinc-900">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         <ClusterView
           detail={detail}
           scenarioId={scenarioId}
