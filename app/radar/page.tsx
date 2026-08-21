@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { fixtureFor } from '@/lib/detect/fixture';
 import { SCENARIOS, type ScenarioId, type DetectionResult } from '@/lib/types';
 import { CampusMapView } from '@/components/radar/campus-map-view';
+import { GeoCampusMap } from '@/components/radar/geo-campus-map';
 import { ElevationView } from '@/components/radar/elevation-view';
 import { ContrastPanel } from '@/components/radar/contrast-panel';
 import { ClusterCards } from '@/components/radar/cluster-cards';
@@ -26,11 +27,13 @@ import {
   Shield,
   Send,
   CheckCircle2,
+  Navigation,
+  Globe
 } from 'lucide-react';
 
 export default function RadarPage() {
   const [role, setRole] = useState<'warden' | 'student'>('warden');
-  const [viewMode, setViewMode] = useState<'map' | 'elevation'>('map');
+  const [viewMode, setViewMode] = useState<'geo' | 'map' | 'elevation'>('geo');
   const [selectedScenario, setSelectedScenario] = useState<ScenarioId>('filter_fault');
   const [result, setResult] = useState<DetectionResult>(() => fixtureFor('filter_fault'));
   const [isScanning, setIsScanning] = useState(false);
@@ -267,15 +270,27 @@ export default function RadarPage() {
               </div>
             )}
 
-            {/* Main Visualizer: View Mode Toggle */}
+            {/* Main Visualizer: 3 View Modes Toggle */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Campus Visualizer Mode:
                   </span>
                 </div>
                 <div className="p-1 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('geo')}
+                    className={`px-3 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 ${
+                      viewMode === 'geo'
+                        ? 'bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                        : 'text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <Globe className="h-3.5 w-3.5 text-red-500" />
+                    <span>Geo Satellite &amp; Pin Stamper</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setViewMode('map')}
@@ -286,7 +301,7 @@ export default function RadarPage() {
                     }`}
                   >
                     <MapIcon className="h-3.5 w-3.5 text-emerald-500" />
-                    <span>2D Campus Heatmap</span>
+                    <span>2D Layout Heatmap</span>
                   </button>
                   <button
                     type="button"
@@ -304,7 +319,9 @@ export default function RadarPage() {
               </div>
 
               {/* Render Selected Visualizer */}
-              {viewMode === 'map' ? (
+              {viewMode === 'geo' ? (
+                <GeoCampusMap elevation={result.elevation} result={result} />
+              ) : viewMode === 'map' ? (
                 <CampusMapView elevation={result.elevation} result={result} />
               ) : (
                 <ElevationView elevation={result.elevation} />
