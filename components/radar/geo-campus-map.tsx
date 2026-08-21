@@ -20,11 +20,8 @@ import {
   Minus,
   Maximize2,
   Trash2,
-  CheckCircle2,
   X,
-  Sparkles,
-  Layers,
-  Radio
+  Layers
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -76,6 +73,12 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   
+  // Real Vector / Satellite Map Types:
+  // 'light' = CartoDB Positron Light (Apple/Uber clean style)
+  // 'satellite' = High-Res Google Satellite (No labels)
+  // 'dark' = CartoDB Dark Canvas
+  const [mapStyle, setMapStyle] = useState<'light' | 'satellite' | 'dark'>('light');
+
   // Custom Node Modal Dialog State
   const [isStampModalOpen, setIsStampModalOpen] = useState(false);
   const [stampName, setStampName] = useState('');
@@ -94,7 +97,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v5');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v7');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -104,7 +107,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v5', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v7', JSON.stringify(updated));
     } catch {}
   };
 
@@ -113,7 +116,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v5');
+      localStorage.removeItem('outbreak_radar_geo_pins_v7');
     } catch {}
   };
 
@@ -229,7 +232,6 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setIsDragging(false);
   };
 
-  // Click on map to stamp active target
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!activeStampTarget || !mapContainerRef.current) return;
 
@@ -267,7 +269,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     };
   };
 
-  const renderPureSatelliteTiles = () => {
+  // Render high-res real vector/satellite basemap tiles
+  const renderTiles = () => {
     const centerTile = latLngToTile(center.lat, center.lng, zoom);
     const centerPixel = latLngToPixel(center.lat, center.lng, zoom);
     const containerW = mapContainerRef.current ? mapContainerRef.current.clientWidth : 800;
@@ -287,11 +290,22 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         const screenX = containerW / 2 + (tilePixelX - centerPixel.x);
         const screenY = containerH / 2 + (tilePixelY - centerPixel.y);
 
-        const tileUrl = `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
+        // Real basemaps without negative inversion photo bugs
+        let tileUrl = '';
+        if (mapStyle === 'light') {
+          // Clean, crisp Apple/Uber style light canvas
+          tileUrl = `https://a.basemaps.cartocdn.com/light_nolabels/${zoom}/${tileX}/${tileY}.png`;
+        } else if (mapStyle === 'satellite') {
+          // Real photorealistic Google satellite (no labels)
+          tileUrl = `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
+        } else {
+          // Clean Dark Canvas
+          tileUrl = `https://a.basemaps.cartocdn.com/dark_nolabels/${zoom}/${tileX}/${tileY}.png`;
+        }
 
         tiles.push(
           <img
-            key={`${tileX}-${tileY}-${zoom}`}
+            key={`${tileX}-${tileY}-${zoom}-${mapStyle}`}
             src={tileUrl}
             alt=""
             loading="lazy"
@@ -320,28 +334,62 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
       <CardHeader className="py-3 px-4 sm:px-6 border-b border-white/[0.08] bg-zinc-900/90 backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded-md bg-red-600/90 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center justify-center">
+            <div className="p-1 rounded-md bg-red-600 text-white shadow-xs flex items-center justify-center">
               <MapPin className="size-3.5" />
             </div>
             <CardTitle className="text-sm sm:text-base font-bold tracking-tight text-zinc-100">
-              Campus Satellite Outbreak Radar
+              Campus Heatmap &amp; Location Stamper
             </CardTitle>
             <Badge variant="outline" className="text-[10px] font-mono border-white/10 text-zinc-400 py-0 h-4">
-              HD Satellite
+              {mapStyle === 'light' ? 'Light Canvas' : mapStyle === 'satellite' ? 'HD Satellite' : 'Dark Canvas'}
             </Badge>
           </div>
           <CardDescription className="text-xs text-zinc-400 mt-0.5">
-            Georeferenced pure satellite view with custom stamps for Hostel Blocks, Old Mess, and RO Water Points.
+            Georeferenced campus layout with radiant infection heatmaps and manual building stamping.
           </CardDescription>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Basemap Style Switcher */}
+          <div className="p-0.5 rounded-lg bg-zinc-800/90 border border-white/10 flex items-center text-xs">
+            <button
+              onClick={() => setMapStyle('light')}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
+                mapStyle === 'light'
+                  ? 'bg-white text-zinc-950 font-bold shadow-xs'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Light
+            </button>
+            <button
+              onClick={() => setMapStyle('satellite')}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
+                mapStyle === 'satellite'
+                  ? 'bg-zinc-700 text-white font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Satellite
+            </button>
+            <button
+              onClick={() => setMapStyle('dark')}
+              className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${
+                mapStyle === 'dark'
+                  ? 'bg-zinc-700 text-white font-bold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Dark
+            </button>
+          </div>
+
           {/* STAMP BUTTON */}
           <Button
             size="sm"
             onClick={() => setIsStampModalOpen(true)}
-            className="bg-red-600 hover:bg-red-500 text-white font-semibold text-xs h-7.5 px-3 gap-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_8px_rgba(220,38,38,0.4)]"
+            className="bg-red-600 hover:bg-red-500 text-white font-semibold text-xs h-7.5 px-3 gap-1 shadow-xs"
           >
             <Plus className="size-3.5" />
             <span>Stamp Location</span>
@@ -374,7 +422,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
         <div className="p-2 rounded-xl bg-zinc-900/80 border border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-300 text-[11px] uppercase tracking-wider">
             <Crosshair className="size-3 text-amber-400" />
-            <span>Hostel Pins:</span>
+            <span>Campus Pins:</span>
           </div>
 
           <div className="flex items-center gap-1 flex-wrap">
@@ -417,7 +465,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             <span className="flex items-center gap-1.5">
               <Crosshair className="size-3.5 text-amber-400" />
               <span>
-                <strong>Click anywhere on the satellite view</strong> to place{' '}
+                <strong>Click anywhere on the map</strong> to place{' '}
                 <span className="text-white font-bold underline">
                   {locations.find((l) => l.id === activeStampTarget)?.name}
                 </span>.
@@ -438,7 +486,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           </div>
         )}
 
-        {/* Realistic Satellite Map Viewport */}
+        {/* Crisp Map Canvas with Radiant Heatmap Rings */}
         <div
           ref={mapContainerRef}
           onMouseDown={handleMouseDown}
@@ -449,12 +497,60 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             setMousePos(null);
           }}
           onClick={handleMapClick}
-          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-white/[0.08] select-none bg-zinc-950 shadow-inner ${
+          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-white/[0.08] select-none ${
+            mapStyle === 'light' ? 'bg-[#f4f3f0]' : 'bg-[#09090b]'
+          } shadow-inner ${
             activeStampTarget ? 'cursor-crosshair ring-2 ring-amber-500' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
-          {/* Pure Satellite Tile Layer */}
-          {renderPureSatelliteTiles()}
+          {/* Base Tiles (Carto Light, Google Satellite, or Carto Dark) */}
+          {renderTiles()}
+
+          {/* VIBRANT RADIANT HEATMAP RINGS */}
+          {locations.map((loc) => {
+            const isBlock = loc.type === 'block';
+            const isMess = loc.type === 'mess';
+            const blockData = isBlock && loc.blockKey
+              ? elevation.blocks.find((b) => b.label.includes(loc.blockKey!))
+              : null;
+
+            const isFlagged = isBlock
+              ? blockData?.isFlagged
+              : isMess
+              ? elevation.mess.isFlagged || result.topCluster?.hypothesis === 'food'
+              : false;
+
+            const cases = isBlock ? blockData?.caseCount ?? 0 : isMess ? elevation.mess.caseCount : 0;
+            const pos = getMarkerScreenPos(loc.lat, loc.lng);
+
+            if (!isFlagged && cases === 0) return null;
+
+            return (
+              <div
+                key={`heat-${loc.id}`}
+                style={{
+                  left: `${pos.x}px`,
+                  top: `${pos.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                className="absolute z-10 pointer-events-none flex items-center justify-center"
+              >
+                {/* Clean, Non-Glitchy Heat Rings */}
+                {isFlagged ? (
+                  <div className="relative flex items-center justify-center">
+                    <span className="w-24 h-24 rounded-full bg-red-500/25 blur-md animate-pulse" />
+                    <span className="absolute w-14 h-14 rounded-full bg-red-600/35 border border-red-500/60" />
+                    <span className="absolute w-10 h-10 rounded-full border-2 border-red-500 animate-ping" />
+                  </div>
+                ) : (
+                  <div className="relative flex items-center justify-center">
+                    <span className="w-14 h-14 rounded-full bg-amber-500/20 blur-sm" />
+                    <span className="absolute w-8 h-8 rounded-full border border-amber-500/50" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Stamped Node Markers with Precision 3D Pin Style */}
           {locations.map((loc) => {
@@ -494,20 +590,20 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 }}
                 className="absolute z-20 cursor-pointer transition-transform duration-150 group flex flex-col items-center"
               >
-                {/* Precision Radar Drop Node */}
+                {/* Precision Drop Pin Icon */}
                 <div
-                  className={`relative flex items-center justify-center rounded-full p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] border transition-all ${
-                    isSelected ? 'scale-110 ring-2 ring-white' : 'hover:scale-105'
+                  className={`relative flex items-center justify-center rounded-full p-1.5 shadow-md border-2 transition-all ${
+                    isSelected ? 'scale-115 ring-2 ring-zinc-950' : 'hover:scale-105'
                   } ${
                     isFlagged
                       ? 'bg-red-600 border-white text-white'
                       : cases > 0
-                      ? 'bg-amber-500 border-white text-zinc-950'
+                      ? 'bg-amber-500 border-zinc-900 text-zinc-950'
                       : isMess
                       ? 'bg-amber-600 border-white text-white'
                       : isWater
                       ? 'bg-blue-600 border-white text-white'
-                      : 'bg-zinc-900 border-zinc-400 text-white'
+                      : 'bg-zinc-900 border-white text-white'
                   }`}
                 >
                   {isMess && <Utensils className="size-3" />}
@@ -530,8 +626,8 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                   }`}
                 />
 
-                {/* Micro Label Tag */}
-                <div className="mt-0.5 px-1.5 py-0.5 rounded-md bg-zinc-950/95 border border-white/10 text-[10px] font-mono font-bold text-zinc-100 flex items-center gap-1 shadow-md whitespace-nowrap">
+                {/* Micro Label Tag (High contrast dark pill) */}
+                <div className="mt-0.5 px-2 py-0.5 rounded-full bg-zinc-950/90 backdrop-blur-md border border-white/20 text-[10px] font-mono font-bold text-zinc-100 flex items-center gap-1 shadow-md whitespace-nowrap">
                   <span>{loc.shortLabel}</span>
                   {isFlagged && <span className="text-red-400 font-extrabold">• ALERT</span>}
                 </div>
@@ -549,7 +645,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               }}
               className="absolute z-30 pointer-events-none flex flex-col items-center"
             >
-              <span className="size-3.5 rounded-full bg-blue-500 border-2 border-white ring-2 ring-blue-500/40 animate-pulse absolute" />
+              <span className="size-4 rounded-full bg-blue-500 border-2 border-white ring-4 ring-blue-500/40 animate-pulse absolute" />
               <span className="size-2.5 rounded-full bg-blue-500 border border-white relative z-10" />
             </div>
           )}
@@ -569,13 +665,13 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
           <div className="absolute right-3 bottom-3 z-30 flex flex-col gap-1">
             <button
               onClick={() => setZoom((z) => Math.min(19, z + 1))}
-              className="size-7 rounded-lg bg-zinc-900/90 border border-white/10 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
+              className="size-7 rounded-lg bg-zinc-900/90 border border-white/20 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
             >
               <Plus className="size-3" />
             </button>
             <button
               onClick={() => setZoom((z) => Math.max(15, z - 1))}
-              className="size-7 rounded-lg bg-zinc-900/90 border border-white/10 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
+              className="size-7 rounded-lg bg-zinc-900/90 border border-white/20 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
             >
               <Minus className="size-3" />
             </button>
@@ -585,13 +681,13 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 setZoom(17);
               }}
               title="Recenter GHS Hostel"
-              className="size-7 rounded-lg bg-zinc-900/90 border border-white/10 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
+              className="size-7 rounded-lg bg-zinc-900/90 border border-white/20 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
             >
               <Maximize2 className="size-3" />
             </button>
           </div>
 
-          <div className="absolute left-3 bottom-3 z-30 px-2 py-0.5 rounded bg-zinc-950/90 border border-white/10 text-[10px] font-mono text-zinc-400">
+          <div className="absolute left-3 bottom-3 z-30 px-2 py-0.5 rounded-full bg-zinc-950/90 border border-white/20 text-[10px] font-mono text-zinc-300 shadow">
             {center.lat.toFixed(5)}° N, {center.lng.toFixed(5)}° E · Zoom {zoom}
           </div>
         </div>
