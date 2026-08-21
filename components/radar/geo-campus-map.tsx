@@ -95,12 +95,18 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load saved stamped pins from localStorage
+  // Initial setup: clean up any legacy storage keys and enforce baked defaults
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v12');
+      // Clear legacy storage keys to prevent stale position regressions
+      ['outbreak_radar_geo_pins_v1', 'outbreak_radar_geo_pins_v2', 'outbreak_radar_geo_pins_v10', 'outbreak_radar_geo_pins_v11', 'outbreak_radar_geo_pins_v12', 'outbreak_radar_geo_pins_v13'].forEach((k) => {
+        localStorage.removeItem(k);
+      });
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v14_baked');
       if (saved) {
         setLocations(JSON.parse(saved));
+      } else {
+        setLocations(MUJ_SATELLITE_DEFAULTS);
       }
     } catch {}
   }, []);
@@ -108,15 +114,14 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v12', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v14_baked', JSON.stringify(updated));
     } catch {}
   };
 
   // Bake & lock current pin layout as default
   const handleBakeLayout = () => {
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v12', JSON.stringify(locations));
-      localStorage.setItem('outbreak_radar_geo_baked_layout', JSON.stringify(locations));
+      localStorage.setItem('outbreak_radar_geo_pins_v14_baked', JSON.stringify(locations));
       setIsBaked(true);
       setTimeout(() => setIsBaked(false), 3000);
     } catch {}
@@ -135,7 +140,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v11');
+      localStorage.removeItem('outbreak_radar_geo_pins_v14_baked');
     } catch {}
   };
 
