@@ -191,7 +191,14 @@ async function capture() {
       await wait(500);
     } else {
       await cdp.send('Runtime.evaluate', {
-        expression: `window.scrollTo({ top: 0, behavior: 'instant' });`,
+        expression: `
+          const heatmap = document.querySelector('div[class*="aspect-"]');
+          if (heatmap) {
+            heatmap.scrollIntoView({ behavior: 'instant', block: 'center' });
+          } else {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }
+        `,
       });
       await wait(500);
     }
