@@ -142,6 +142,49 @@ export default function RadarPage() {
           </div>
         </header>
 
+        {/* Data Pipeline Pillars Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+              <Users className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Clinic &amp; Self-Reports</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Doctor (1.0) · Student (0.6)</span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+              <Clock className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Mess Menu &amp; Timing</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Breakfast · Lunch · Dinner</span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+              <Network className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Hostel Allocation DB</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">4 Blocks · Day Scholars</span>
+            </div>
+          </div>
+
+          <div className="p-2.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+              <Radio className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block text-[11px]">Targeted Push Advisories</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Scoped to block &amp; meal</span>
+            </div>
+          </div>
+        </div>
+
         {/* Scenario Switcher Bar */}
         <ScenarioBar
           selectedScenario={selectedScenario}
