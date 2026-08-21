@@ -43,14 +43,14 @@ export interface StampedLocation {
   lng: number;
 }
 
-// Clean MUJ GHS Hostel & Blue Dove Mess positions
+// Baked MUJ GHS Hostel, Blue Dove Mess & RO Plant ground truth layout
 const MUJ_SATELLITE_DEFAULTS: StampedLocation[] = [
-  { id: 'mess', name: 'Blue Dove Mess & Dining', shortLabel: 'Blue Dove Mess', type: 'mess', lat: 26.84365, lng: 75.56580 },
-  { id: 'tank-A', blockKey: 'A', name: 'B1 – Boys Hostel', shortLabel: 'Block B1', type: 'block', lat: 26.84370, lng: 75.56370 },
-  { id: 'tank-B', blockKey: 'B', name: 'B2 – Boys Hostel', shortLabel: 'Block B2', type: 'block', lat: 26.84390, lng: 75.56445 },
-  { id: 'tank-C', blockKey: 'C', name: 'G1 – Girls Hostel', shortLabel: 'Block G1', type: 'block', lat: 26.84275, lng: 75.56360 },
-  { id: 'tank-D', blockKey: 'D', name: 'G2 – Girls Hostel', shortLabel: 'Block G2', type: 'block', lat: 26.84260, lng: 75.56450 },
-  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'RO Plant', type: 'water', lat: 26.84430, lng: 75.56510 },
+  { id: 'tank-B', blockKey: 'B', name: 'B2 – Boys Hostel', shortLabel: 'Block B2', type: 'block', lat: 26.84398, lng: 75.56405 },
+  { id: 'tank-A', blockKey: 'A', name: 'B1 – Boys Hostel', shortLabel: 'Block B1', type: 'block', lat: 26.84368, lng: 75.56470 },
+  { id: 'tank-D', blockKey: 'D', name: 'G2 – Girls Hostel', shortLabel: 'Block G2', type: 'block', lat: 26.84310, lng: 75.56435 },
+  { id: 'tank-C', blockKey: 'C', name: 'G1 – Girls Hostel', shortLabel: 'Block G1', type: 'block', lat: 26.84305, lng: 75.56485 },
+  { id: 'mess', name: 'Blue Dove Mess & Dining', shortLabel: 'Blue Dove Mess', type: 'mess', lat: 26.84270, lng: 75.56370 },
+  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'RO Plant', type: 'water', lat: 26.84245, lng: 75.56335 },
 ];
 
 function latLngToTile(lat: number, lng: number, zoom: number) {
@@ -98,7 +98,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v11');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v12');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -108,14 +108,14 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v11', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v12', JSON.stringify(updated));
     } catch {}
   };
 
   // Bake & lock current pin layout as default
   const handleBakeLayout = () => {
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v11', JSON.stringify(locations));
+      localStorage.setItem('outbreak_radar_geo_pins_v12', JSON.stringify(locations));
       localStorage.setItem('outbreak_radar_geo_baked_layout', JSON.stringify(locations));
       setIsBaked(true);
       setTimeout(() => setIsBaked(false), 3000);
