@@ -22,7 +22,9 @@ import {
   Trash2,
   CheckCircle2,
   X,
-  Sparkles
+  Sparkles,
+  Layers,
+  Radio
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -92,7 +94,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   // Load saved stamped pins from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v4');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v5');
       if (saved) {
         setLocations(JSON.parse(saved));
       }
@@ -102,7 +104,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v4', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v5', JSON.stringify(updated));
     } catch {}
   };
 
@@ -111,11 +113,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     setCenter({ lat: 26.8433, lng: 75.5647 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v4');
+      localStorage.removeItem('outbreak_radar_geo_pins_v5');
     } catch {}
   };
 
-  // Start stamping a newly defined location
   const handleStartStampingNew = (useGpsNow: boolean = false) => {
     const defaultLabels = {
       block: `Block ${String.fromCharCode(65 + locations.filter((l) => l.type === 'block').length)}`,
@@ -314,36 +315,36 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
     : null;
 
   return (
-    <Card className="border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden bg-zinc-950 text-white relative">
+    <Card className="border border-zinc-200 dark:border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.3)] overflow-hidden bg-zinc-950 text-white relative rounded-2xl">
       {/* Header & Main Toolbelt */}
-      <CardHeader className="py-3 px-4 sm:px-6 border-b border-zinc-800 bg-zinc-900 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <CardHeader className="py-3 px-4 sm:px-6 border-b border-white/[0.08] bg-zinc-900/90 backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded bg-red-600 text-white flex items-center justify-center">
-              <MapPin className="h-4 w-4" />
+            <div className="p-1 rounded-md bg-red-600/90 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] flex items-center justify-center">
+              <MapPin className="size-3.5" />
             </div>
-            <CardTitle className="text-base font-bold text-zinc-100">
-              Campus Satellite Outbreak Map
+            <CardTitle className="text-sm sm:text-base font-bold tracking-tight text-zinc-100">
+              Campus Satellite Outbreak Radar
             </CardTitle>
-            <Badge variant="outline" className="text-[10px] font-mono border-zinc-700 text-zinc-400">
-              Clean View
+            <Badge variant="outline" className="text-[10px] font-mono border-white/10 text-zinc-400 py-0 h-4">
+              HD Satellite
             </Badge>
           </div>
           <CardDescription className="text-xs text-zinc-400 mt-0.5">
-            Pin and monitor hostel blocks, mess kitchens, and water distribution points directly on satellite imagery.
+            Georeferenced pure satellite view with custom stamps for Hostel Blocks, Old Mess, and RO Water Points.
           </CardDescription>
         </div>
 
-        {/* Primary Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* BIG PROMINENT STAMP BUTTON */}
+        {/* Action Controls */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* STAMP BUTTON */}
           <Button
             size="sm"
             onClick={() => setIsStampModalOpen(true)}
-            className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs h-8 px-3 gap-1.5 shadow-sm"
+            className="bg-red-600 hover:bg-red-500 text-white font-semibold text-xs h-7.5 px-3 gap-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_8px_rgba(220,38,38,0.4)]"
           >
-            <Plus className="h-4 w-4" />
-            <span>+ Stamp New Location</span>
+            <Plus className="size-3.5" />
+            <span>Stamp Location</span>
           </Button>
 
           {/* GPS Quick Button */}
@@ -351,32 +352,32 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             size="sm"
             variant="outline"
             onClick={handleGetGps}
-            className="text-xs h-8 gap-1.5 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
+            className="text-xs h-7.5 gap-1 border-white/10 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200"
           >
-            <Navigation className="h-3.5 w-3.5 text-blue-400" />
-            <span>My GPS Location</span>
+            <Navigation className="size-3 text-blue-400" />
+            <span>My GPS</span>
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
             onClick={handleResetToDefaults}
-            className="text-xs h-8 text-zinc-400 hover:text-zinc-100"
+            className="text-xs h-7.5 text-zinc-400 hover:text-zinc-100 px-2"
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset Default Pins
+            <RotateCcw className="size-3 mr-1" /> Reset
           </Button>
         </div>
       </CardHeader>
 
       <CardContent className="p-4 space-y-3">
         {/* Quick Node Pin Strip */}
-        <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-1.5 font-bold text-zinc-200">
-            <Crosshair className="h-4 w-4 text-amber-400" />
-            <span>Active Pins:</span>
+        <div className="p-2 rounded-xl bg-zinc-900/80 border border-white/[0.08] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 font-semibold text-zinc-300 text-[11px] uppercase tracking-wider">
+            <Crosshair className="size-3 text-amber-400" />
+            <span>Hostel Pins:</span>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 flex-wrap">
             {locations.map((loc) => {
               const isActive = activeStampTarget === loc.id;
               const isSelected = selectedPinId === loc.id;
@@ -385,27 +386,26 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               const isWater = loc.type === 'water';
 
               return (
-                <Button
+                <button
                   key={loc.id}
-                  size="xs"
-                  variant={isActive ? 'default' : isSelected ? 'secondary' : 'outline'}
+                  type="button"
                   onClick={() => {
                     setSelectedPinId(loc.id);
                     setActiveStampTarget(isActive ? null : loc.id);
                   }}
-                  className={`h-7 px-2.5 text-[11px] font-medium transition-all ${
+                  className={`h-6.5 px-2.5 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1 border ${
                     isActive
-                      ? 'bg-amber-500 text-zinc-950 font-bold border-amber-400'
+                      ? 'bg-amber-500 text-zinc-950 font-bold border-amber-400 shadow-sm'
                       : isSelected
-                      ? 'border-white text-white font-bold bg-zinc-800'
-                      : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-800'
+                      ? 'border-white text-white font-bold bg-zinc-800 shadow-xs'
+                      : 'border-white/[0.08] bg-zinc-950 text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
                   }`}
                 >
-                  {isBlock && <Building2 className="h-3 w-3 mr-1 text-emerald-400" />}
-                  {isMess && <Utensils className="h-3 w-3 mr-1 text-amber-400" />}
-                  {isWater && <Droplets className="h-3 w-3 mr-1 text-blue-400" />}
+                  {isBlock && <Building2 className="size-3 text-emerald-400" />}
+                  {isMess && <Utensils className="size-3 text-amber-400" />}
+                  {isWater && <Droplets className="size-3 text-blue-400" />}
                   <span>{loc.shortLabel}</span>
-                </Button>
+                </button>
               );
             })}
           </div>
@@ -413,34 +413,32 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
         {/* Stamping Instruction Banner */}
         {activeStampTarget && (
-          <div className="p-3 rounded-lg bg-amber-950/90 border border-amber-500/70 text-amber-100 text-xs flex items-center justify-between shadow-md animate-in fade-in duration-150">
-            <span className="flex items-center gap-2">
-              <Crosshair className="h-4 w-4 text-amber-400 animate-spin-slow" />
+          <div className="p-2.5 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-100 text-xs flex items-center justify-between shadow-md">
+            <span className="flex items-center gap-1.5">
+              <Crosshair className="size-3.5 text-amber-400" />
               <span>
-                <strong>Click anywhere on the satellite image below</strong> to place{' '}
+                <strong>Click anywhere on the satellite view</strong> to place{' '}
                 <span className="text-white font-bold underline">
                   {locations.find((l) => l.id === activeStampTarget)?.name}
                 </span>.
               </span>
             </span>
-            <Button
-              size="xs"
-              variant="ghost"
+            <button
               onClick={() => setActiveStampTarget(null)}
-              className="h-6 text-xs text-amber-300 hover:text-white"
+              className="text-[11px] text-amber-300 hover:text-white font-medium px-2 py-0.5 rounded bg-amber-900/40"
             >
               Cancel
-            </Button>
+            </button>
           </div>
         )}
 
         {gpsError && (
-          <div className="p-2 rounded bg-red-950/80 border border-red-800 text-red-300 text-xs">
+          <div className="p-2 rounded-lg bg-red-950/80 border border-red-800 text-red-300 text-xs">
             {gpsError}
           </div>
         )}
 
-        {/* Clean Satellite Map Viewport */}
+        {/* Realistic Satellite Map Viewport */}
         <div
           ref={mapContainerRef}
           onMouseDown={handleMouseDown}
@@ -451,14 +449,14 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
             setMousePos(null);
           }}
           onClick={handleMapClick}
-          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-zinc-800 select-none bg-zinc-950 ${
+          className={`relative w-full aspect-[16/10] max-h-[520px] rounded-xl overflow-hidden border border-white/[0.08] select-none bg-zinc-950 shadow-inner ${
             activeStampTarget ? 'cursor-crosshair ring-2 ring-amber-500' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
-          {/* Pure Satellite Tile Layer (0 3rd party labels) */}
+          {/* Pure Satellite Tile Layer */}
           {renderPureSatelliteTiles()}
 
-          {/* Stamped Node Markers (Only user and engine labels) */}
+          {/* Stamped Node Markers with Precision 3D Pin Style */}
           {locations.map((loc) => {
             const isBlock = loc.type === 'block';
             const isMess = loc.type === 'mess';
@@ -496,10 +494,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                 }}
                 className="absolute z-20 cursor-pointer transition-transform duration-150 group flex flex-col items-center"
               >
-                {/* Clean Drop Pin Icon */}
+                {/* Precision Radar Drop Node */}
                 <div
-                  className={`relative flex items-center justify-center rounded-full p-2 shadow-lg border-2 transition-all ${
-                    isSelected ? 'scale-115 ring-2 ring-white' : 'hover:scale-105'
+                  className={`relative flex items-center justify-center rounded-full p-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] border transition-all ${
+                    isSelected ? 'scale-110 ring-2 ring-white' : 'hover:scale-105'
                   } ${
                     isFlagged
                       ? 'bg-red-600 border-white text-white'
@@ -509,17 +507,17 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                       ? 'bg-amber-600 border-white text-white'
                       : isWater
                       ? 'bg-blue-600 border-white text-white'
-                      : 'bg-zinc-800 border-zinc-300 text-white'
+                      : 'bg-zinc-900 border-zinc-400 text-white'
                   }`}
                 >
-                  {isMess && <Utensils className="h-4 w-4" />}
-                  {isBlock && <Building2 className="h-4 w-4" />}
-                  {isWater && <Droplets className="h-4 w-4" />}
+                  {isMess && <Utensils className="size-3" />}
+                  {isBlock && <Building2 className="size-3" />}
+                  {isWater && <Droplets className="size-3" />}
                 </div>
 
-                {/* Drop Pin Tip */}
+                {/* Needle Tip */}
                 <div
-                  className={`w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] -mt-0.5 ${
+                  className={`w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] -mt-0.5 ${
                     isFlagged
                       ? 'border-t-red-600'
                       : cases > 0
@@ -528,14 +526,14 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                       ? 'border-t-amber-600'
                       : isWater
                       ? 'border-t-blue-600'
-                      : 'border-t-zinc-800'
+                      : 'border-t-zinc-900'
                   }`}
                 />
 
-                {/* Stamped Building Name Tag */}
-                <div className="mt-1 px-2 py-0.5 rounded bg-zinc-950/95 border border-zinc-700 text-[11px] font-bold text-zinc-100 flex items-center gap-1 shadow-md whitespace-nowrap">
+                {/* Micro Label Tag */}
+                <div className="mt-0.5 px-1.5 py-0.5 rounded-md bg-zinc-950/95 border border-white/10 text-[10px] font-mono font-bold text-zinc-100 flex items-center gap-1 shadow-md whitespace-nowrap">
                   <span>{loc.shortLabel}</span>
-                  {isFlagged && <span className="text-red-400 font-extrabold">• OUTBREAK</span>}
+                  {isFlagged && <span className="text-red-400 font-extrabold">• ALERT</span>}
                 </div>
               </div>
             );
@@ -551,102 +549,96 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
               }}
               className="absolute z-30 pointer-events-none flex flex-col items-center"
             >
-              <span className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white ring-4 ring-blue-500/30 animate-pulse absolute" />
-              <span className="h-3 w-3 rounded-full bg-blue-500 border border-white relative z-10" />
+              <span className="size-3.5 rounded-full bg-blue-500 border-2 border-white ring-2 ring-blue-500/40 animate-pulse absolute" />
+              <span className="size-2.5 rounded-full bg-blue-500 border border-white relative z-10" />
             </div>
           )}
 
-          {/* Stamping Cursor Follower Tooltip */}
+          {/* Cursor Drop Follower */}
           {activeStampTarget && mousePos && (
             <div
-              style={{ left: `${mousePos.x + 12}px`, top: `${mousePos.y + 12}px` }}
-              className="absolute z-40 pointer-events-none px-2.5 py-1 rounded-md bg-amber-500 text-zinc-950 font-bold text-xs shadow-lg flex items-center gap-1"
+              style={{ left: `${mousePos.x + 10}px`, top: `${mousePos.y + 10}px` }}
+              className="absolute z-40 pointer-events-none px-2 py-0.5 rounded bg-amber-500 text-zinc-950 font-bold text-[10px] shadow-md flex items-center gap-1"
             >
-              <MapPin className="h-3.5 w-3.5" />
-              <span>Click to Drop Pin</span>
+              <MapPin className="size-3" />
+              <span>Click to Drop</span>
             </div>
           )}
 
           {/* Zoom & Recenter Controls */}
-          <div className="absolute right-3 bottom-3 z-30 flex flex-col gap-1.5">
-            <Button
-              size="icon-xs"
-              variant="outline"
+          <div className="absolute right-3 bottom-3 z-30 flex flex-col gap-1">
+            <button
               onClick={() => setZoom((z) => Math.min(19, z + 1))}
-              className="h-7 w-7 bg-zinc-900/90 border-zinc-700 text-white hover:bg-zinc-800 shadow"
+              className="size-7 rounded-lg bg-zinc-900/90 border border-white/10 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
             >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="icon-xs"
-              variant="outline"
+              <Plus className="size-3" />
+            </button>
+            <button
               onClick={() => setZoom((z) => Math.max(15, z - 1))}
-              className="h-7 w-7 bg-zinc-900/90 border-zinc-700 text-white hover:bg-zinc-800 shadow"
+              className="size-7 rounded-lg bg-zinc-900/90 border border-white/10 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
             >
-              <Minus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="icon-xs"
-              variant="outline"
+              <Minus className="size-3" />
+            </button>
+            <button
               onClick={() => {
                 setCenter({ lat: 26.8433, lng: 75.5647 });
                 setZoom(17);
               }}
               title="Recenter GHS Hostel"
-              className="h-7 w-7 bg-zinc-900/90 border-zinc-700 text-white hover:bg-zinc-800 shadow"
+              className="size-7 rounded-lg bg-zinc-900/90 border border-white/10 text-white hover:bg-zinc-800 flex items-center justify-center shadow"
             >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </Button>
+              <Maximize2 className="size-3" />
+            </button>
           </div>
 
-          <div className="absolute left-3 bottom-3 z-30 px-2 py-1 rounded bg-zinc-950/80 border border-zinc-800 text-[10px] font-mono text-zinc-400">
-            Center: {center.lat.toFixed(5)}° N, {center.lng.toFixed(5)}° E · Zoom: {zoom}
+          <div className="absolute left-3 bottom-3 z-30 px-2 py-0.5 rounded bg-zinc-950/90 border border-white/10 text-[10px] font-mono text-zinc-400">
+            {center.lat.toFixed(5)}° N, {center.lng.toFixed(5)}° E · Zoom {zoom}
           </div>
         </div>
 
         {/* Selected Node Details Drawer */}
         {selectedLoc && (
-          <div className="p-3.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs space-y-3 animate-in fade-in duration-150">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-800">
+          <div className="p-3 rounded-xl bg-zinc-900/90 border border-white/[0.08] text-xs space-y-2.5 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/[0.08]">
               <div className="flex items-center gap-2">
                 {selectedLoc.type === 'mess' ? (
-                  <Utensils className="h-4 w-4 text-amber-400" />
+                  <Utensils className="size-3.5 text-amber-400" />
                 ) : selectedLoc.type === 'water' ? (
-                  <Droplets className="h-4 w-4 text-blue-400" />
+                  <Droplets className="size-3.5 text-blue-400" />
                 ) : (
-                  <Building2 className="h-4 w-4 text-emerald-400" />
+                  <Building2 className="size-3.5 text-emerald-400" />
                 )}
                 <div>
-                  <h4 className="font-bold text-zinc-100">{selectedLoc.name}</h4>
-                  <p className="text-[11px] text-zinc-400 font-mono">
+                  <h4 className="font-bold text-zinc-100 text-xs">{selectedLoc.name}</h4>
+                  <p className="text-[10px] text-zinc-400 font-mono">
                     Coordinates: {selectedLoc.lat.toFixed(5)}° N, {selectedLoc.lng.toFixed(5)}° E
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Button
                   size="xs"
                   variant="outline"
                   onClick={() => setActiveStampTarget(selectedLoc.id)}
-                  className="h-7 text-xs border-zinc-700 text-zinc-200"
+                  className="h-6.5 text-[11px] border-white/10 text-zinc-200"
                 >
-                  <Crosshair className="h-3 w-3 mr-1" /> Re-Position on Map
+                  <Crosshair className="size-3 mr-1" /> Re-Position
                 </Button>
 
                 <Button
                   size="xs"
                   variant="ghost"
                   onClick={() => handleDeleteNode(selectedLoc.id)}
-                  className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/50"
+                  className="h-6.5 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-950/40"
                 >
-                  <Trash2 className="h-3 w-3 mr-1" /> Remove Pin
+                  <Trash2 className="size-3 mr-1" /> Delete
                 </Button>
 
                 <Link href={`/radar/${result.scenario}`}>
-                  <Button size="sm" className="h-7 text-xs bg-zinc-100 hover:bg-white text-zinc-900 font-medium gap-1">
+                  <Button size="xs" className="h-6.5 text-[11px] bg-zinc-100 hover:bg-white text-zinc-950 font-semibold gap-1">
                     <span>Inspect Cluster</span>
-                    <ExternalLink className="h-3 w-3" />
+                    <ExternalLink className="size-2.5" />
                   </Button>
                 </Link>
               </div>
@@ -654,25 +646,25 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
             {selectedBlockData && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="p-2 rounded bg-zinc-950 border border-zinc-800">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
                   <span className="text-zinc-400 block text-[10px]">Total Cases</span>
-                  <span className="font-bold text-zinc-100">
+                  <span className="font-bold text-zinc-100 text-xs">
                     {formatCases(selectedBlockData.caseCount, selectedBlockData.suppressed)}
                   </span>
                 </div>
-                <div className="p-2 rounded bg-zinc-950 border border-zinc-800">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
                   <span className="text-zinc-400 block text-[10px]">Attack Rate</span>
-                  <span className="font-bold text-zinc-100">
+                  <span className="font-bold text-zinc-100 text-xs">
                     {formatAttackRate(selectedBlockData.attackRate)}
                   </span>
                 </div>
-                <div className="p-2 rounded bg-zinc-950 border border-zinc-800">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
                   <span className="text-zinc-400 block text-[10px]">Floors Monitored</span>
-                  <span className="font-bold text-zinc-100">5 Floors (10 Filters)</span>
+                  <span className="font-bold text-zinc-100 text-xs">5 Floors (10 Filters)</span>
                 </div>
-                <div className="p-2 rounded bg-zinc-950 border border-zinc-800">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-white/[0.06]">
                   <span className="text-zinc-400 block text-[10px]">Plumbing Tank</span>
-                  <span className="font-bold text-zinc-100">{selectedBlockData.tankName}</span>
+                  <span className="font-bold text-zinc-100 text-xs">{selectedBlockData.tankName}</span>
                 </div>
               </div>
             )}
@@ -682,74 +674,72 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
       {/* STAMP NEW LOCATION MODAL DIALOG */}
       {isStampModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-5 space-y-4 text-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-white/15 rounded-2xl max-w-sm w-full p-5 space-y-4 text-white shadow-[0_16px_48px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-red-600 text-white">
-                  <Plus className="h-4 w-4" />
+                <div className="p-1 rounded-md bg-red-600 text-white">
+                  <Plus className="size-3.5" />
                 </div>
-                <h3 className="font-bold text-base">Stamp New Campus Location</h3>
+                <h3 className="font-bold text-sm">Stamp Campus Location</h3>
               </div>
-              <Button
-                size="icon-xs"
-                variant="ghost"
+              <button
                 onClick={() => setIsStampModalOpen(false)}
-                className="text-zinc-400 hover:text-white"
+                className="text-zinc-400 hover:text-white p-1"
               >
-                <X className="h-4 w-4" />
-              </Button>
+                <X className="size-3.5" />
+              </button>
             </div>
 
-            {/* Step 1: Type selection */}
+            {/* Type selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-300">1. Select Location Type:</label>
-              <div className="grid grid-cols-3 gap-2">
+              <label className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider">1. Type:</label>
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setStampType('block')}
-                  className={`p-3 rounded-xl border text-xs flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-2.5 rounded-xl border text-xs flex flex-col items-center gap-1 transition-all ${
                     stampType === 'block'
                       ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                      : 'bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20'
                   }`}
                 >
-                  <Building2 className="h-5 w-5 text-emerald-500" />
-                  <span>Hostel Block</span>
+                  <Building2 className="size-4 text-emerald-500" />
+                  <span className="text-[11px]">Hostel</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setStampType('mess')}
-                  className={`p-3 rounded-xl border text-xs flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-2.5 rounded-xl border text-xs flex flex-col items-center gap-1 transition-all ${
                     stampType === 'mess'
                       ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                      : 'bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20'
                   }`}
                 >
-                  <Utensils className="h-5 w-5 text-amber-500" />
-                  <span>Dining Mess</span>
+                  <Utensils className="size-4 text-amber-500" />
+                  <span className="text-[11px]">Mess</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setStampType('water')}
-                  className={`p-3 rounded-xl border text-xs flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-2.5 rounded-xl border text-xs flex flex-col items-center gap-1 transition-all ${
                     stampType === 'water'
                       ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow'
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                      : 'bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20'
                   }`}
                 >
-                  <Droplets className="h-5 w-5 text-blue-500" />
-                  <span>RO Water Source</span>
+                  <Droplets className="size-4 text-blue-500" />
+                  <span className="text-[11px]">Water</span>
                 </button>
               </div>
             </div>
 
-            {/* Step 2: Name Input */}
+            {/* Name Input */}
             <div className="space-y-1.5">
-              <label htmlFor="locName" className="text-xs font-semibold text-zinc-300">
-                2. Location Name / Title:
+              <label htmlFor="locName" className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider">
+                2. Name / Label:
               </label>
               <Input
                 id="locName"
@@ -760,20 +750,20 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                     ? 'e.g. Hostel Block E'
                     : stampType === 'mess'
                     ? 'e.g. Old Mess / Night Canteen'
-                    : 'e.g. RO Plant #2 (Overhead Tank)'
+                    : 'e.g. RO Plant 2'
                 }
-                className="h-9 bg-zinc-950 border-zinc-700 text-xs text-white"
+                className="h-8.5 bg-zinc-950 border-white/15 text-xs text-white"
               />
             </div>
 
-            {/* Step 3: Stamping Mode Actions */}
+            {/* Drop action */}
             <div className="pt-2 flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={() => handleStartStampingNew(false)}
-                className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs h-9 gap-1.5 shadow"
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs h-8 gap-1 shadow"
               >
-                <Crosshair className="h-4 w-4" />
-                <span>Click Map to Drop Pin</span>
+                <Crosshair className="size-3" />
+                <span>Click Map to Drop</span>
               </Button>
 
               <Button
@@ -786,10 +776,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
                     handleStartStampingNew(true);
                   }
                 }}
-                className="flex-1 border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 text-xs h-9 gap-1.5"
+                className="flex-1 border-white/15 bg-zinc-800/80 text-zinc-200 hover:bg-zinc-700 text-xs h-8 gap-1"
               >
-                <Navigation className="h-3.5 w-3.5 text-blue-400" />
-                <span>Stamp at My GPS</span>
+                <Navigation className="size-3 text-blue-400" />
+                <span>Use GPS</span>
               </Button>
             </div>
           </div>
