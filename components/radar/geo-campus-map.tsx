@@ -45,12 +45,12 @@ export interface StampedLocation {
 
 // Baked MUJ GHS Hostel, Blue Dove Mess & RO Plant ground truth layout
 const MUJ_SATELLITE_DEFAULTS: StampedLocation[] = [
-  { id: 'tank-B', blockKey: 'B', name: 'B2 – Boys Hostel', shortLabel: 'Block B2', type: 'block', lat: 26.84398, lng: 75.56405 },
-  { id: 'tank-A', blockKey: 'A', name: 'B1 – Boys Hostel', shortLabel: 'Block B1', type: 'block', lat: 26.84368, lng: 75.56470 },
-  { id: 'tank-D', blockKey: 'D', name: 'G2 – Girls Hostel', shortLabel: 'Block G2', type: 'block', lat: 26.84310, lng: 75.56435 },
-  { id: 'tank-C', blockKey: 'C', name: 'G1 – Girls Hostel', shortLabel: 'Block G1', type: 'block', lat: 26.84305, lng: 75.56485 },
-  { id: 'mess', name: 'Blue Dove Mess & Dining', shortLabel: 'Blue Dove Mess', type: 'mess', lat: 26.84270, lng: 75.56370 },
-  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'RO Plant', type: 'water', lat: 26.84245, lng: 75.56335 },
+  { id: 'tank-B', blockKey: 'B', name: 'B2 – Boys Hostel', shortLabel: 'Block B2', type: 'block', lat: 26.84410, lng: 75.56475 },
+  { id: 'tank-A', blockKey: 'A', name: 'B1 – Boys Hostel', shortLabel: 'Block B1', type: 'block', lat: 26.84380, lng: 75.56535 },
+  { id: 'tank-D', blockKey: 'D', name: 'G2 – Girls Hostel', shortLabel: 'Block G2', type: 'block', lat: 26.84325, lng: 75.56495 },
+  { id: 'tank-C', blockKey: 'C', name: 'G1 – Girls Hostel', shortLabel: 'Block G1', type: 'block', lat: 26.84318, lng: 75.56550 },
+  { id: 'mess', name: 'Blue Dove Mess & Dining', shortLabel: 'Blue Dove Mess', type: 'mess', lat: 26.84285, lng: 75.56430 },
+  { id: 'water-main', name: 'Main Campus Water Supply', shortLabel: 'RO Plant', type: 'water', lat: 26.84260, lng: 75.56390 },
 ];
 
 function latLngToTile(lat: number, lng: number, zoom: number) {
@@ -86,7 +86,7 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const [stampType, setStampType] = useState<'block' | 'mess' | 'water'>('block');
 
   // Map state
-  const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 26.8433, lng: 75.5647 });
+  const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 26.8434, lng: 75.5649 });
   const [zoom, setZoom] = useState(17);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
@@ -99,10 +99,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   useEffect(() => {
     try {
       // Clear legacy storage keys to prevent stale position regressions
-      ['outbreak_radar_geo_pins_v1', 'outbreak_radar_geo_pins_v2', 'outbreak_radar_geo_pins_v10', 'outbreak_radar_geo_pins_v11', 'outbreak_radar_geo_pins_v12', 'outbreak_radar_geo_pins_v13'].forEach((k) => {
+      ['outbreak_radar_geo_pins_v1', 'outbreak_radar_geo_pins_v2', 'outbreak_radar_geo_pins_v10', 'outbreak_radar_geo_pins_v11', 'outbreak_radar_geo_pins_v12', 'outbreak_radar_geo_pins_v13', 'outbreak_radar_geo_pins_v14_baked'].forEach((k) => {
         localStorage.removeItem(k);
       });
-      const saved = localStorage.getItem('outbreak_radar_geo_pins_v14_baked');
+      const saved = localStorage.getItem('outbreak_radar_geo_pins_v15_calibrated');
       if (saved) {
         setLocations(JSON.parse(saved));
       } else {
@@ -114,14 +114,14 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
   const savePins = (updated: StampedLocation[]) => {
     setLocations(updated);
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v14_baked', JSON.stringify(updated));
+      localStorage.setItem('outbreak_radar_geo_pins_v15_calibrated', JSON.stringify(updated));
     } catch {}
   };
 
   // Bake & lock current pin layout as default
   const handleBakeLayout = () => {
     try {
-      localStorage.setItem('outbreak_radar_geo_pins_v14_baked', JSON.stringify(locations));
+      localStorage.setItem('outbreak_radar_geo_pins_v15_calibrated', JSON.stringify(locations));
       setIsBaked(true);
       setTimeout(() => setIsBaked(false), 3000);
     } catch {}
@@ -137,10 +137,10 @@ export function GeoCampusMap({ elevation, result }: GeoCampusMapProps) {
 
   const handleResetToDefaults = () => {
     setLocations(MUJ_SATELLITE_DEFAULTS);
-    setCenter({ lat: 26.8433, lng: 75.5647 });
+    setCenter({ lat: 26.8434, lng: 75.5649 });
     setZoom(17);
     try {
-      localStorage.removeItem('outbreak_radar_geo_pins_v14_baked');
+      localStorage.removeItem('outbreak_radar_geo_pins_v15_calibrated');
     } catch {}
   };
 
