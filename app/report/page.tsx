@@ -29,7 +29,8 @@ import {
   HeartPulse,
   RefreshCw,
   Zap,
-  Radio
+  Radio,
+  Sparkles
 } from 'lucide-react';
 
 interface MealOption {
@@ -76,11 +77,9 @@ export default function ReportPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Read role from cookie
     const match = document.cookie.match(/(?:^|; )role=([^;]*)/);
     if (match && (match[1] === 'student' || match[1] === 'doctor' || match[1] === 'warden')) {
-      const currentRole = match[1] as UserRole;
-      setRole(currentRole);
+      setRole(match[1] as UserRole);
     }
   }, []);
 
@@ -131,11 +130,9 @@ export default function ReportPage() {
         const data: CreateReportResponse = await res.json();
         setSubmittedId(data.reportId || `rep-${Date.now().toString().slice(-4)}`);
       } else {
-        // Fallback for demo resilience
         setSubmittedId(`rep-live-${Date.now().toString().slice(-4)}`);
       }
     } catch {
-      // Local fallback
       setSubmittedId(`rep-live-${Date.now().toString().slice(-4)}`);
     } finally {
       setIsSubmitting(false);
@@ -153,56 +150,61 @@ export default function ReportPage() {
 
   if (submittedId) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 px-4 py-8 flex items-center justify-center">
-        <Card className="max-w-md w-full border-zinc-200 dark:border-zinc-800 shadow-lg">
+      <div className="min-h-screen bg-zinc-950 px-4 py-8 flex items-center justify-center relative overflow-hidden">
+        {/* Atmospheric Ambient Glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <Card className="max-w-md w-full border border-white/15 bg-zinc-900/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.2)] rounded-2xl relative z-10 text-white">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
-              <CheckCircle2 className="size-7" />
+            <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 flex items-center justify-center mb-3 shadow-[0_4px_16px_rgba(16,185,129,0.25),inset_0_1px_1px_rgba(255,255,255,0.4)]">
+              <CheckCircle2 className="size-8" />
             </div>
-            <CardTitle className="text-xl font-bold">Report Submitted Successfully</CardTitle>
-            <CardDescription className="text-xs">
-              Reference: <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{submittedId}</span>
+            <CardTitle className="text-xl font-bold tracking-tight">Report Submitted</CardTitle>
+            <CardDescription className="text-xs text-zinc-400">
+              Reference ID: <span className="font-mono font-medium text-emerald-300">{submittedId}</span>
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4 text-xs text-zinc-600 dark:text-zinc-400">
-            <div className="rounded-lg bg-zinc-100 dark:bg-zinc-900 p-3.5 space-y-2 border border-zinc-200 dark:border-zinc-800">
+          <CardContent className="space-y-4 pt-4 text-xs text-zinc-300">
+            <div className="rounded-xl bg-zinc-950/70 p-4 space-y-2.5 border border-white/10 shadow-inner">
               <div className="flex justify-between">
-                <span className="font-medium text-zinc-500">Student Profile:</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100 font-mono">{studentId}</span>
+                <span className="text-zinc-400">Student Profile:</span>
+                <span className="font-semibold text-zinc-100 font-mono">{studentId}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-medium text-zinc-500">Detection Weight:</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {role === 'doctor' ? '1.0× (Doctor Intake)' : '0.6× (Self-Report)'}
+                <span className="text-zinc-400">Detection Weight:</span>
+                <span className="font-semibold text-zinc-100">
+                  {role === 'doctor' ? '1.0× (Clinical Intake)' : '0.6× (Self-Report)'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="font-medium text-zinc-500">Symptoms ({selectedSymptoms.length}):</span>
-                <span className="text-right font-medium text-zinc-900 dark:text-zinc-100">
+                <span className="text-zinc-400">Symptoms ({selectedSymptoms.length}):</span>
+                <span className="text-right font-medium text-zinc-100">
                   {selectedSymptoms.map((s) => SYMPTOM_LABELS[s]).join(', ')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="font-medium text-zinc-500">Severity:</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{severity} / 5</span>
+                <span className="text-zinc-400">Severity:</span>
+                <span className="font-semibold text-zinc-100">{severity} / 5</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200 text-[11px]">
-                <Radio className="size-3.5 text-amber-600" />
+            <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 backdrop-blur-md space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-300 text-[11px]">
+                <Radio className="size-3.5 text-amber-400 animate-pulse" />
                 <span>Advisory Loop Verified</span>
               </div>
-              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                If the warden has already confirmed this student's block advisory, this report will appear as <strong>prompted</strong> and be excluded from subsequent spatial p-value recalculation.
+              <p className="text-[11px] text-amber-200/80 leading-normal">
+                If the warden has confirmed your block's advisory, this entry is logged for care and excluded from false-alarm p-value calculations.
               </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-2 pt-2">
             <Link href="/radar/filter_fault" className="w-full">
-              <Button className="w-full">View Cluster Drill-Down & Case List</Button>
+              <Button className="w-full h-11 bg-white/95 hover:bg-white text-zinc-950 font-bold shadow-[0_4px_16px_rgba(255,255,255,0.2),inset_0_1px_1px_rgba(255,255,255,0.6)] rounded-xl">
+                View Campus Radar &amp; Case List
+              </Button>
             </Link>
-            <Button variant="ghost" size="sm" onClick={handleReset} className="w-full text-xs">
+            <Button variant="ghost" size="sm" onClick={handleReset} className="w-full text-xs text-zinc-400 hover:text-white">
               <RefreshCw className="size-3.5 mr-1.5" />
               Submit Another Report
             </Button>
@@ -213,42 +215,49 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-16">
-      {/* Mobile-Optimized Top Bar */}
-      <header className="sticky top-0 z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur px-4 py-3">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-16 relative overflow-x-hidden">
+      {/* Background ambient lighting */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-red-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* Glassmorphic Top Bar */}
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-zinc-950/70 backdrop-blur-xl px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white font-medium transition-colors">
             <ArrowLeft className="size-4" />
             <span>Role Hub</span>
           </Link>
           <div className="flex items-center gap-1.5">
             <HeartPulse className="size-4 text-red-500 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider">Rapid Intake</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-200">Rapid Triage Intake</span>
           </div>
-          <Badge variant="outline" className="text-[10px] font-mono py-0 h-5">
+          <Badge variant="outline" className="text-[10px] font-mono py-0 h-5 border-white/20 bg-white/5 backdrop-blur-md">
             &lt;60s Mobile
           </Badge>
         </div>
       </header>
 
-      {/* Main Container - strictly 375px friendly */}
-      <main className="max-w-md mx-auto px-4 pt-4">
-        {/* Role Bar & Speed Notice */}
-        <div className="mb-4 flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+      {/* Main Container */}
+      <main className="max-w-md mx-auto px-4 pt-4 relative z-10">
+        {/* Translucent Role Pill */}
+        <div className="mb-4 flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.15)]">
           <div className="flex items-center gap-2">
             {role === 'doctor' ? (
-              <Stethoscope className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div className="p-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-400">
+                <Stethoscope className="size-4" />
+              </div>
             ) : (
-              <GraduationCap className="size-4 text-zinc-600 dark:text-zinc-400 shrink-0" />
+              <div className="p-1.5 rounded-lg bg-blue-500/20 border border-blue-400/40 text-blue-400">
+                <GraduationCap className="size-4" />
+              </div>
             )}
-            <span className="text-xs font-semibold">
-              {role === 'doctor' ? 'Clinical Diagnosis Mode (1.0×)' : 'Student Self-Report (0.6×)'}
+            <span className="text-xs font-bold text-zinc-200">
+              {role === 'doctor' ? 'Clinical Diagnosis (1.0×)' : 'Student Self-Report (0.6×)'}
             </span>
           </div>
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-[11px] px-2 text-zinc-600 dark:text-zinc-400"
+            variant="glass"
+            size="xs"
+            className="text-[11px] px-2.5 h-7"
             onClick={() => {
               const nextRole = role === 'doctor' ? 'student' : 'doctor';
               setRole(nextRole);
@@ -263,13 +272,13 @@ export default function ReportPage() {
           {/* Quick Demo Persona Presets */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <Zap className="size-3.5 text-amber-500" />
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                <Zap className="size-3.5 text-amber-400" />
                 <span>Demo Student Preset</span>
               </Label>
               <span className="text-[10px] text-zinc-500 font-mono">1-tap demo setup</span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {PRESET_STUDENTS.map((p) => {
                 const isSelected = studentId === p.id;
                 return (
@@ -277,32 +286,32 @@ export default function ReportPage() {
                     key={p.id}
                     type="button"
                     onClick={() => setStudentId(p.id)}
-                    className={`p-2 rounded-lg text-left text-xs transition-all border ${
+                    className={`p-2.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer active:scale-95 ${
                       isSelected
-                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold'
-                        : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
+                        ? 'bg-zinc-100 text-zinc-950 border-white font-bold shadow-[0_4px_16px_rgba(255,255,255,0.25),inset_0_1px_1px_rgba(255,255,255,0.6)]'
+                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]'
                     }`}
                   >
                     <div className="font-bold truncate text-[11px]">{p.label}</div>
-                    <div className="text-[9px] opacity-70 truncate">{p.desc}</div>
+                    <div className="text-[9px] opacity-70 truncate mt-0.5">{p.desc}</div>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Section 1: Symptoms Multi-Select */}
+          {/* Section 1: Translucent 3D Symptoms Multi-Select */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                1. Select Symptoms <span className="text-red-500">*</span>
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                1. Select Symptoms <span className="text-red-400">*</span>
               </Label>
-              <span className="text-[11px] text-zinc-500 font-mono">
+              <span className="text-[11px] text-zinc-400 font-mono">
                 {selectedSymptoms.length} selected
               </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {(Object.keys(SYMPTOM_LABELS) as Symptom[]).map((sym) => {
                 const isChecked = selectedSymptoms.includes(sym);
                 return (
@@ -310,20 +319,20 @@ export default function ReportPage() {
                     type="button"
                     key={sym}
                     onClick={() => toggleSymptom(sym)}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg text-left text-xs transition-all border select-none active:scale-[0.98] ${
+                    className={`flex items-center gap-2.5 p-3 rounded-2xl text-left text-xs transition-all duration-200 border select-none active:scale-95 cursor-pointer ${
                       isChecked
-                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-xs'
-                        : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
+                        ? 'bg-red-600/90 text-white border-red-400 shadow-[0_4px_16px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] font-bold'
+                        : 'bg-white/5 hover:bg-white/10 text-zinc-300 border-white/10 backdrop-blur-xl shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]'
                     }`}
                   >
                     <div
-                      className={`size-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                      className={`size-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
                         isChecked
-                          ? 'border-white dark:border-zinc-900 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white'
-                          : 'border-zinc-400 dark:border-zinc-600'
+                          ? 'border-white bg-white text-red-600'
+                          : 'border-zinc-500 bg-transparent'
                       }`}
                     >
-                      {isChecked && <div className="size-1.5 rounded-full bg-zinc-900 dark:bg-white" />}
+                      {isChecked && <div className="size-1.5 rounded-full bg-red-600" />}
                     </div>
                     <span className="leading-tight">{SYMPTOM_LABELS[sym]}</span>
                   </button>
@@ -332,13 +341,13 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Section 2: Severity (1-5 Touch Slider/Buttons) */}
+          {/* Section 2: Translucent 3D Severity Level */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
                 2. Severity Level
               </Label>
-              <span className="text-xs font-bold font-mono">
+              <span className="text-xs font-bold font-mono text-amber-300">
                 {severity === 1 && '1 - Mild (Discomfort)'}
                 {severity === 2 && '2 - Moderate (Functional)'}
                 {severity === 3 && '3 - Severe (Bedridden)'}
@@ -347,7 +356,7 @@ export default function ReportPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-5 gap-2">
               {[1, 2, 3, 4, 5].map((lvl) => {
                 const isSelected = severity === lvl;
                 return (
@@ -355,12 +364,12 @@ export default function ReportPage() {
                     key={lvl}
                     type="button"
                     onClick={() => handleQuickSeverity(lvl)}
-                    className={`h-11 rounded-lg flex flex-col items-center justify-center font-bold text-sm transition-all border active:scale-95 ${
+                    className={`h-12 rounded-2xl flex flex-col items-center justify-center font-bold text-sm transition-all duration-200 border active:scale-90 cursor-pointer ${
                       isSelected
                         ? lvl >= 4
-                          ? 'bg-red-600 text-white border-red-600 ring-2 ring-red-400/40 shadow-xs'
-                          : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 ring-2 ring-zinc-500/40 shadow-xs'
-                        : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400'
+                          ? 'bg-red-600 text-white border-red-400 shadow-[0_4px_16px_rgba(239,68,68,0.5),inset_0_1px_1px_rgba(255,255,255,0.5)] ring-2 ring-red-400'
+                          : 'bg-zinc-100 text-zinc-950 border-white shadow-[0_4px_16px_rgba(255,255,255,0.3),inset_0_1px_1px_rgba(255,255,255,0.6)] ring-2 ring-white'
+                        : 'bg-white/5 hover:bg-white/10 text-zinc-400 border-white/10 backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]'
                     }`}
                   >
                     <span>{lvl}</span>
@@ -373,8 +382,8 @@ export default function ReportPage() {
           {/* Section 3: Onset Time */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="onsetTime" className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <Clock className="size-3.5 text-zinc-500" />
+              <Label htmlFor="onsetTime" className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                <Clock className="size-3.5 text-zinc-400" />
                 <span>3. When did symptoms start?</span>
               </Label>
             </div>
@@ -383,7 +392,7 @@ export default function ReportPage() {
               type="datetime-local"
               value={onsetTime}
               onChange={(e) => setOnsetTime(e.target.value)}
-              className="h-10 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              className="h-10 text-xs bg-white/5 border-white/10 backdrop-blur-md text-zinc-100 rounded-xl"
               required
             />
           </div>
@@ -391,23 +400,23 @@ export default function ReportPage() {
           {/* Section 4: 72-Hour Meal Recall Grid */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <Utensils className="size-3.5 text-amber-500" />
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                <Utensils className="size-3.5 text-amber-400" />
                 <span>4. Meals Eaten in Last 72h</span>
               </Label>
-              <span className="text-[10px] text-zinc-500 font-mono">Powers 2×2 cohort analysis</span>
+              <span className="text-[10px] text-zinc-400 font-mono">Powers 2×2 cohort analysis</span>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {RECENT_MEALS.map((meal) => {
                 const isSelected = selectedMeals.includes(meal.id);
                 return (
                   <label
                     key={meal.id}
-                    className={`flex items-start gap-3 p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-all active:scale-[0.99] ${
+                    className={`flex items-start gap-3 p-3 rounded-2xl border text-xs cursor-pointer select-none transition-all duration-200 active:scale-[0.99] ${
                       isSelected
-                        ? 'bg-zinc-100 dark:bg-zinc-900/90 border-zinc-400 dark:border-zinc-600'
-                        : 'bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 opacity-80'
+                        ? 'bg-white/15 border-white/30 backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                        : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400 backdrop-blur-md'
                     }`}
                   >
                     <Checkbox
@@ -417,12 +426,12 @@ export default function ReportPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        <span className="font-bold text-zinc-100">
                           {meal.day} {meal.name}
                         </span>
-                        <span className="text-[10px] font-mono text-zinc-500">{meal.time}</span>
+                        <span className="text-[10px] font-mono text-zinc-400">{meal.time}</span>
                       </div>
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">
                         {meal.items}
                       </p>
                     </div>
@@ -434,10 +443,10 @@ export default function ReportPage() {
 
           {/* Section 5: Doctor-Only Clinical Section */}
           {role === 'doctor' && (
-            <div className="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-3">
+            <div className="p-4 rounded-2xl border border-emerald-400/40 bg-emerald-950/30 backdrop-blur-xl shadow-[0_4px_20px_rgba(16,185,129,0.15),inset_0_1px_1px_rgba(255,255,255,0.2)] space-y-3">
               <div className="flex items-center gap-1.5">
-                <Stethoscope className="size-4 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
+                <Stethoscope className="size-4 text-emerald-400" />
+                <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
                   Physician Intake Diagnostic
                 </span>
                 <Badge className="ml-auto bg-emerald-600 text-white text-[10px] py-0 h-4">
@@ -446,7 +455,7 @@ export default function ReportPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="studentIdInput" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <Label htmlFor="studentIdInput" className="text-xs font-medium text-zinc-300">
                   Student Registration ID
                 </Label>
                 <Input
@@ -454,12 +463,12 @@ export default function ReportPage() {
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
                   placeholder="e.g. stu-172"
-                  className="h-9 text-xs bg-white dark:bg-zinc-900"
+                  className="h-9 text-xs bg-white/5 border-white/10 backdrop-blur-md"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="doctorNotes" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                <Label htmlFor="doctorNotes" className="text-xs font-medium text-zinc-300">
                   Clinical Diagnosis Notes
                 </Label>
                 <Textarea
@@ -467,15 +476,15 @@ export default function ReportPage() {
                   value={doctorNotes}
                   onChange={(e) => setDoctorNotes(e.target.value)}
                   placeholder="e.g. Acute gastroenteritis with dehydration; prescribed ORS & ciprofloxacin; suspected bacterial contamination."
-                  className="text-xs min-h-[70px] bg-white dark:bg-zinc-900"
+                  className="text-xs min-h-[70px] bg-white/5 border-white/10 backdrop-blur-md"
                 />
               </div>
             </div>
           )}
 
           {submitError && (
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-              <AlertTriangle className="size-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-red-950/60 border border-red-500/50 text-red-300 text-xs flex items-center gap-2">
+              <AlertTriangle className="size-4 shrink-0 text-red-400" />
               <span>{submitError}</span>
             </div>
           )}
@@ -485,12 +494,12 @@ export default function ReportPage() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-12 text-sm font-semibold gap-2 shadow-md bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900"
+              className="w-full h-13 text-sm font-bold gap-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white rounded-2xl border border-white/20 shadow-[0_8px_24px_rgba(239,68,68,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] transition-all active:scale-98"
             >
               <Send className="size-4" />
               <span>{isSubmitting ? 'Submitting to Engine...' : 'Submit Health Report'}</span>
             </Button>
-            <p className="text-[10px] text-center text-zinc-400 dark:text-zinc-500 mt-2">
+            <p className="text-[10px] text-center text-zinc-500 mt-2">
               Protected under India's DPDP Act 2023 · Aggregated automatically for hostel safety.
             </p>
           </div>

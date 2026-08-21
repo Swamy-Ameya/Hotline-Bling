@@ -95,7 +95,6 @@ export default function HomePage() {
   const [isSettingRole, setIsSettingRole] = useState(false);
 
   useEffect(() => {
-    // Read current cookie if exists
     const match = document.cookie.match(/(?:^|; )role=([^;]*)/);
     if (match && (match[1] === 'student' || match[1] === 'doctor' || match[1] === 'warden')) {
       setSelectedRole(match[1] as UserRole);
@@ -104,35 +103,38 @@ export default function HomePage() {
 
   const handleSelectRole = (role: UserRole, targetUrl: string) => {
     setIsSettingRole(true);
-    // Set cookie
     document.cookie = `role=${role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
     setSelectedRole(role);
     router.push(targetUrl);
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col justify-between">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between relative overflow-x-hidden">
+      {/* Ambient background glows */}
+      <div className="fixed top-0 left-1/4 w-[600px] h-[300px] bg-red-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="fixed bottom-0 right-1/4 w-[500px] h-[300px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
+
       {/* Top Bar */}
-      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur sticky top-0 z-20">
+      <header className="border-b border-white/10 bg-zinc-950/70 backdrop-blur-xl sticky top-0 z-20 shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center font-bold tracking-wider">
-              <ShieldAlert className="size-5 text-amber-500" />
+            <div className="h-10 w-10 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold tracking-wider shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+              <ShieldAlert className="size-5 text-amber-400" />
             </div>
             <div>
-              <span className="font-bold tracking-tight text-base sm:text-lg">Outbreak Radar</span>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-2 hidden sm:inline border-l border-zinc-300 dark:border-zinc-700 pl-2">
+              <span className="font-bold tracking-tight text-base sm:text-lg text-white">Outbreak Radar</span>
+              <span className="text-xs text-zinc-400 ml-2 hidden sm:inline border-l border-zinc-700 pl-2">
                 Hostel Micro-Outbreak Early Warning System
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-xs font-mono text-zinc-600 dark:text-zinc-400 hidden md:inline-flex">
+            <Badge variant="outline" className="text-xs font-mono text-zinc-400 border-white/15 bg-white/5 backdrop-blur-md hidden md:inline-flex">
               MUJ Hackathon POC · Next.js 16
             </Badge>
             <Link href="/report">
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+              <Button size="sm" variant="glass" className="gap-1.5 text-xs">
                 <FileText className="size-3.5" />
                 Report Symptom
               </Button>
@@ -142,79 +144,74 @@ export default function HomePage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-1 flex flex-col justify-center">
+      <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-1 flex flex-col justify-center relative z-10">
         {/* Hero Header */}
         <div className="max-w-3xl mb-10">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 mb-4 border border-zinc-200 dark:border-zinc-700">
-            <Sparkles className="size-3.5 text-amber-500" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-amber-300 mb-4 border border-white/15 backdrop-blur-md shadow-xs">
+            <Sparkles className="size-3.5 text-amber-400" />
             <span>Role Switcher & Seeded Demo Persona Access</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-3 text-white">
             Hostel Water & Food Micro-Outbreak Detection
           </h1>
-          <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          <p className="text-base sm:text-lg text-zinc-400 leading-relaxed">
             Select a persona to experience Outbreak Radar from the perspective of students reporting illness, 
             clinic doctors diagnosing cases, or wardens arbitrating statistical scan clusters.
           </p>
         </div>
 
-        {/* Demo Persona Cards */}
+        {/* Translucent 3D Persona Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {DEMO_ACCOUNTS.map((acc) => {
             const Icon = acc.icon;
             const isSelected = selectedRole === acc.role;
 
             return (
-              <Card
+              <div
                 key={acc.role}
-                className={`relative transition-all duration-200 flex flex-col justify-between border-2 ${
+                className={`relative rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between backdrop-blur-xl border ${
                   isSelected
-                    ? 'border-zinc-900 dark:border-zinc-100 shadow-md bg-white dark:bg-zinc-900'
-                    : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white/60 dark:bg-zinc-900/60'
+                    ? 'bg-white/15 border-white/40 shadow-[0_12px_40px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] ring-2 ring-white/30 scale-[1.02]'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]'
                 }`}
               >
                 <div>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
-                        <Icon className="size-5" />
-                      </div>
-                      <Badge
-                        variant={isSelected ? 'default' : 'secondary'}
-                        className="text-[11px] font-mono tracking-tight"
-                      >
-                        {acc.badge}
-                      </Badge>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-2xl bg-white/10 border border-white/20 text-white shadow-inner">
+                      <Icon className="size-5" />
                     </div>
-                    <CardTitle className="text-xl font-bold">{acc.name}</CardTitle>
-                    <CardDescription className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      {acc.title}
-                    </CardDescription>
-                  </CardHeader>
+                    <Badge
+                      variant={isSelected ? 'default' : 'outline'}
+                      className={`text-[11px] font-mono tracking-tight ${isSelected ? 'bg-white text-zinc-950 font-bold' : 'border-white/20 text-zinc-300'}`}
+                    >
+                      {acc.badge}
+                    </Badge>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">{acc.name}</h3>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+                    {acc.title}
+                  </p>
 
-                  <CardContent className="space-y-4">
-                    <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-normal">
-                      {acc.description}
+                  <p className="text-xs text-zinc-300 leading-normal mb-4">
+                    {acc.description}
+                  </p>
+
+                  <div className="pt-3 border-t border-white/10 space-y-1.5 mb-6">
+                    <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Role Capabilities
                     </p>
-
-                    <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-1.5">
-                      <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
-                        Role Capabilities
-                      </p>
-                      {acc.privileges.map((p, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-                          <CheckCircle2 className="size-3.5 text-zinc-400 dark:text-zinc-600 shrink-0 mt-0.5" />
-                          <span className="leading-tight">{p}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
+                    {acc.privileges.map((p, idx) => (
+                      <div key={idx} className="flex items-start gap-2 text-xs text-zinc-300">
+                        <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span className="leading-tight">{p}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <CardFooter className="pt-4 flex flex-col gap-2">
+                <div className="pt-2 flex flex-col gap-2">
                   <Button
-                    className="w-full justify-between gap-2"
-                    variant={isSelected ? 'default' : 'secondary'}
+                    className="w-full justify-between gap-2 h-11 rounded-xl font-bold text-sm bg-white/95 hover:bg-white text-zinc-950 shadow-[0_4px_16px_rgba(255,255,255,0.2),inset_0_1px_1px_rgba(255,255,255,0.6)] active:scale-98"
                     disabled={isSettingRole}
                     onClick={() => handleSelectRole(acc.role, acc.primaryActionUrl)}
                   >
@@ -225,31 +222,31 @@ export default function HomePage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                      className="w-full text-xs text-zinc-400 hover:text-white"
                       onClick={() => handleSelectRole(acc.role, acc.secondaryActionUrl!)}
                     >
                       {acc.secondaryActionLabel}
                     </Button>
                   )}
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
 
         {/* Four Scenario Direct Access */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/50 p-6">
+        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
-              <h2 className="text-base font-bold flex items-center gap-2">
-                <Activity className="size-4 text-zinc-700 dark:text-zinc-300" />
+              <h2 className="text-base font-bold flex items-center gap-2 text-white">
+                <Activity className="size-4 text-emerald-400" />
                 <span>Simulated Scenarios (POC Test Suite)</span>
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-zinc-400">
                 Directly inspect the 4 validated synthetic benchmark cases powering the early warning engine.
               </p>
             </div>
-            <Badge variant="outline" className="text-xs font-mono w-fit">
+            <Badge variant="outline" className="text-xs font-mono w-fit border-white/20 text-zinc-300">
               4 Evaluated States
             </Badge>
           </div>
@@ -268,23 +265,23 @@ export default function HomePage() {
                   onClick={() => {
                     document.cookie = `role=${selectedRole}; path=/; max-age=604800; SameSite=Lax`;
                   }}
-                  className="group block p-4 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all shadow-xs"
+                  className="group block p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 backdrop-blur-md transition-all duration-200 shadow-[0_4px_16px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-98"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
-                      {isWater && <Waves className="size-4 text-amber-500" />}
-                      {isFood && <UtensilsCrossed className="size-4 text-red-500" />}
-                      {isCoincidence && <ShieldAlert className="size-4 text-zinc-500" />}
-                      {isQuiet && <CheckCircle2 className="size-4 text-emerald-500" />}
-                      <span className="font-semibold text-sm group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
+                      {isWater && <Waves className="size-4 text-amber-400" />}
+                      {isFood && <UtensilsCrossed className="size-4 text-red-400" />}
+                      {isCoincidence && <ShieldAlert className="size-4 text-zinc-400" />}
+                      {isQuiet && <CheckCircle2 className="size-4 text-emerald-400" />}
+                      <span className="font-semibold text-sm text-zinc-200 group-hover:text-white transition-colors">
                         {sc.label}
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-2">
+                  <p className="text-xs text-zinc-400 line-clamp-2 mb-2">
                     {sc.blurb}
                   </p>
-                  <div className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/80 px-2 py-1 rounded border border-zinc-100 dark:border-zinc-800">
+                  <div className="text-[11px] font-mono text-zinc-300 bg-black/40 px-2 py-1 rounded-lg border border-white/10">
                     {sc.expected}
                   </div>
                 </Link>
@@ -295,7 +292,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 py-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
+      <footer className="border-t border-white/10 py-6 text-center text-xs text-zinc-500 relative z-10">
         <p>Outbreak Radar · Manipal University Jaipur 12-Hour POC · Graph Spatial Scan & Permutation Testing</p>
       </footer>
     </div>
