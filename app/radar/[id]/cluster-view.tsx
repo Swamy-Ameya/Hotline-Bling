@@ -18,7 +18,7 @@ import { EpiCurveChart } from './epi-curve-chart';
 import { MealTable } from './meal-table';
 import { CaseList } from './case-list';
 import { InterventionsPanel } from './interventions-panel';
-import { FloorFilterMatrix } from './floor-filter-matrix';
+import { BlockFloorMatrix } from './block-floor-matrix';
 import { 
   ArrowLeft, 
   Activity, 
@@ -31,7 +31,7 @@ import {
   Share2,
   FileText,
   Layers,
-  Search
+  MapPin
 } from 'lucide-react';
 
 interface ClusterViewProps {
@@ -90,7 +90,7 @@ export function ClusterView({ detail, scenarioId, role }: ClusterViewProps) {
         </div>
       </div>
 
-      {/* Main Tabs Navigation (5 Diagnostic Investigation Tabs) */}
+      {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full bg-white/5 backdrop-blur-xl p-1.5 border border-white/10 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]">
           <TabsTrigger value="overview" className="gap-1.5 text-xs font-medium rounded-xl data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-[0_4px_12px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
@@ -98,9 +98,9 @@ export function ClusterView({ detail, scenarioId, role }: ClusterViewProps) {
             <span>Overview</span>
           </TabsTrigger>
 
-          <TabsTrigger value="floors" className="gap-1.5 text-xs font-medium rounded-xl data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-[0_4px_12px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
-            <Layers className="size-3.5" />
-            <span>Floor Matrix</span>
+          <TabsTrigger value="location-matrix" className="gap-1.5 text-xs font-medium rounded-xl data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-[0_4px_12px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+            <MapPin className="size-3.5" />
+            <span>Location &amp; Time Matrix</span>
           </TabsTrigger>
 
           <TabsTrigger value="cohort" className="gap-1.5 text-xs font-medium rounded-xl data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-[0_4px_12px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
@@ -115,7 +115,7 @@ export function ClusterView({ detail, scenarioId, role }: ClusterViewProps) {
 
           <TabsTrigger value="interventions" className="gap-1.5 text-xs font-medium rounded-xl data-[state=active]:bg-white/15 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-[0_4px_12px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
             <Wrench className="size-3.5" />
-            <span>Interventions</span>
+            <span>Actions &amp; Logs</span>
           </TabsTrigger>
         </TabsList>
 
@@ -137,9 +137,9 @@ export function ClusterView({ detail, scenarioId, role }: ClusterViewProps) {
           />
         </TabsContent>
 
-        {/* Tab 2: Floor & Sibling Filter Diagnostic Matrix */}
-        <TabsContent value="floors" className="space-y-6 focus-visible:outline-none">
-          <FloorFilterMatrix detail={detail} scenarioId={scenarioId} />
+        {/* Tab 2: Location, Time & Common Source Matrix */}
+        <TabsContent value="location-matrix" className="space-y-6 focus-visible:outline-none">
+          <BlockFloorMatrix detail={detail} scenarioId={scenarioId} />
         </TabsContent>
 
         {/* Tab 3: 2x2 Meal Cohort Analysis */}
