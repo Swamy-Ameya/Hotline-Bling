@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "detect:test": "tsx scripts/verify-fixtures.ts",
-    "typecheck": "tsc --noEmit"
+    "detect:test": "tsx scripts/detect-test.ts",
+    "typecheck": "tsc --noEmit",
+    "detect:report": "tsx scripts/engine-report.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

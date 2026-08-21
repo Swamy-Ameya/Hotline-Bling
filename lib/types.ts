@@ -165,6 +165,12 @@ export interface Cluster {
   medianIncubationHours: number | null;
   curveWidthHours: number | null;
 
+  /** Fisher exact p for the meal association. Present on food clusters only —
+   *  for those, THIS is the significance figure to show, not pSpatial (a food
+   *  outbreak deliberately has no spatial signal). Added after the freeze as an
+   *  optional field, per the rule in AGENTS.md. */
+  pFood?: number;
+
   /** Plain-English arbitration, stronger hypothesis. Render verbatim. */
   verdict: string;
   /** The weaker hypothesis, shown underneath so we never hide the alternative. */
@@ -361,18 +367,18 @@ export const SCENARIOS: ScenarioMeta[] = [
     id: 'filter_fault',
     label: 'Filter fault',
     blurb: 'Nine cases in 48h, all under one floor filter, smeared onset.',
-    expected: 'Localises to Filter 3A, p is about 0.002.',
+    expected: 'Localises to Filter 3A with a very small p-value.',
   },
   {
     id: 'food',
     label: 'Food batch',
-    blurb: 'Fourteen cases across three blocks and day scholars, sharp onset.',
-    expected: 'Localises to Tuesday dinner, RR is about 7.',
+    blurb: 'Cases spread across every block and among day scholars, sharp onset.',
+    expected: 'Localises to the suspect meal with a high relative risk.',
   },
   {
     id: 'coincidence',
     label: 'Coincidence trap',
-    blurb: 'Seven cases that land in one block purely by chance.',
-    expected: 'A threshold system alerts. We hold at watch, p is about 0.31.',
+    blurb: 'Cases that land in one block purely by chance. Nothing is injected.',
+    expected: 'A threshold system alerts. We hold at watch.',
   },
 ];
