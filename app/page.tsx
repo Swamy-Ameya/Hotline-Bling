@@ -106,33 +106,33 @@ export default function HomePage() {
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-8">How it works</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
+            <div className="p-6 rounded-2xl bg-white border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover">
               <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
                 <Users className="size-5" />
               </div>
-              <h3 className="font-bold text-base mb-2">Students report symptoms</h3>
+              <h3 className="font-bold text-base mb-2 text-zinc-900">Students report symptoms</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">
                 60-second mobile form: what symptoms, when did they start, what did you eat in the last 72 hours.
                 Doctor reports carry 1.0 weight, self-reports carry 0.6.
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
+            <div className="p-6 rounded-2xl bg-white border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover">
               <div className="size-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
                 <BarChart3 className="size-5" />
               </div>
-              <h3 className="font-bold text-base mb-2">Engine scans for clusters</h3>
+              <h3 className="font-bold text-base mb-2 text-zinc-900">Engine scans for clusters</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">
                 Spatial scan statistic over the hostel graph. 999 permutation replicates answer: 
                 "is this cluster real, or would random chance produce something this tight?"
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-sm">
+            <div className="p-6 rounded-2xl bg-white border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover">
               <div className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
                 <MapPin className="size-5" />
               </div>
-              <h3 className="font-bold text-base mb-2">Localise water vs food</h3>
+              <h3 className="font-bold text-base mb-2 text-zinc-900">Localise water vs food</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">
                 One block sick? It's the water tank. All blocks + day scholars sick? It's the mess kitchen. 
                 Sharp onset = food, smeared curve = water.
@@ -145,24 +145,24 @@ export default function HomePage() {
       {/* ───── ROLE CARDS ───── */}
       <section className="border-t border-zinc-100">
         <div className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-8">Select your role</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-8 text-ao-subtle">Select your role</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Student */}
             <button
               onClick={() => setRoleAndGo('student', '/report')}
-              className="text-left p-6 rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-md transition-all bg-white group"
+              className="text-left p-6 rounded-2xl border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover bg-white group cursor-pointer"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
                   <GraduationCap className="size-5" />
                 </div>
-                <span className="text-xs font-mono text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-200/60 px-2 py-0.5 rounded-md">
                   Hosteller
                 </span>
               </div>
-              <h3 className="font-bold text-lg mb-1 group-hover:text-zinc-900">Student</h3>
-              <p className="text-sm text-zinc-500 mb-4">
+              <h3 className="font-bold text-lg mb-1 text-zinc-900 group-hover:text-zinc-900">Student</h3>
+              <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
                 Report symptoms and track campus health advisories.
               </p>
               <span className="text-sm font-semibold text-zinc-900 flex items-center gap-1 group-hover:gap-2 transition-all">
@@ -173,18 +173,18 @@ export default function HomePage() {
             {/* Doctor */}
             <button
               onClick={() => setRoleAndGo('doctor', '/radar')}
-              className="text-left p-6 rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-md transition-all bg-white group"
+              className="text-left p-6 rounded-2xl border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover bg-white group cursor-pointer"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className="size-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="size-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
                   <Stethoscope className="size-5" />
                 </div>
-                <span className="text-xs font-mono text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-200/60 px-2 py-0.5 rounded-md">
                   Health Centre
                 </span>
               </div>
-              <h3 className="font-bold text-lg mb-1 group-hover:text-zinc-900">Doctor</h3>
-              <p className="text-sm text-zinc-500 mb-4">
+              <h3 className="font-bold text-lg mb-1 text-zinc-900 group-hover:text-zinc-900">Doctor</h3>
+              <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
                 Clinical-grade intake with full-weight case logging.
               </p>
               <span className="text-sm font-semibold text-zinc-900 flex items-center gap-1 group-hover:gap-2 transition-all">
@@ -195,18 +195,18 @@ export default function HomePage() {
             {/* Warden */}
             <button
               onClick={() => setRoleAndGo('warden', '/radar')}
-              className="text-left p-6 rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-md transition-all bg-white group"
+              className="text-left p-6 rounded-2xl border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover bg-white group cursor-pointer"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className="size-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <div className="size-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
                   <ShieldAlert className="size-5" />
                 </div>
-                <span className="text-xs font-mono text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-200/60 px-2 py-0.5 rounded-md">
                   Administration
                 </span>
               </div>
-              <h3 className="font-bold text-lg mb-1 group-hover:text-zinc-900">Warden</h3>
-              <p className="text-sm text-zinc-500 mb-4">
+              <h3 className="font-bold text-lg mb-1 text-zinc-900 group-hover:text-zinc-900">Warden</h3>
+              <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
                 Triage clusters, verify water tests, confirm advisories.
               </p>
               <span className="text-sm font-semibold text-zinc-900 flex items-center gap-1 group-hover:gap-2 transition-all">

@@ -185,7 +185,7 @@ export default function RadarPage() {
         </div>
 
         {/* ───── STATUS CARD ───── */}
-        <div className={`p-6 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+        <div className={`p-6 rounded-2xl border shadow-ao-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
           isAlert
             ? 'bg-red-50 border-red-200/80'
             : isWatch
@@ -231,7 +231,7 @@ export default function RadarPage() {
         <GeoCampusMap elevation={result.elevation} result={result} />
 
         {/* ───── LOCATION BREAKDOWN ───── */}
-        <div className="rounded-2xl border border-zinc-200/80 bg-white overflow-hidden shadow-xs">
+        <div className="rounded-2xl border border-zinc-200/80 bg-white overflow-hidden shadow-ao-card">
           <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between">
             <h3 className="text-[15px] font-semibold text-zinc-900 flex items-center gap-2.5">
               <Activity className="size-4 text-zinc-400" />
@@ -356,13 +356,13 @@ export default function RadarPage() {
         {/* ───── DEEP DIVE LINK ───── */}
         {topCluster && (
           <Link href={`/radar/${selectedScenario}`}>
-            <div className="p-6 rounded-2xl border border-zinc-200/80 bg-white hover:border-zinc-300 hover:shadow-md transition-all flex items-center justify-between cursor-pointer group">
+            <div className="p-6 rounded-2xl border border-zinc-200/80 bg-white shadow-ao-card shadow-ao-card-hover flex items-center justify-between cursor-pointer group">
               <div className="flex items-center gap-4">
-                <div className="size-11 rounded-2xl bg-zinc-100 text-zinc-500 flex items-center justify-center group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                <div className="size-11 rounded-2xl bg-zinc-100 text-zinc-500 flex items-center justify-center group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0 shadow-xs">
                   <TrendingUp className="size-5" />
                 </div>
                 <div>
-                  <span className="font-semibold text-[15px] text-zinc-900">
+                  <span className="font-semibold text-[15px] text-zinc-900 text-ao-subtle">
                     Deep Dive: {cleanHeadline(topCluster.name)}
                   </span>
                   <span className="block text-[13px] text-zinc-500 mt-0.5">

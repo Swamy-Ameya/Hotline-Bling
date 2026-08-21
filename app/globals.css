@@ -127,10 +127,56 @@
     text-rendering: geometricPrecision;
     -webkit-font-smoothing: subpixel-antialiased;
     -moz-osx-font-smoothing: auto;
-    letter-spacing: -0.011em;
+    letter-spacing: -0.012em;
   }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss02", "kern", "liga";
   }
+
+  /* Soft Ambient Occlusion Typography & Card Depth */
+  h1, h2, h3, .font-heading {
+    text-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.05), 0 2px 5px rgba(0, 0, 0, 0.02);
+  }
+}
+
+/* Ambient Occlusion & Tactile Depth Utilities */
+.text-ao {
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.text-ao-subtle {
+  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.04);
+}
+
+.text-ao-dark {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.shadow-ao-card {
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.02),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    0 16px 32px -4px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.shadow-ao-card-hover {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shadow-ao-card-hover:hover {
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.03),
+    0 8px 24px rgba(0, 0, 0, 0.05),
+    0 24px 48px -6px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+}
+
+.shadow-ao-button {
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
