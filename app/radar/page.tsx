@@ -1,49 +1,93 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
-import { fixtureFor, ALL_FIXTURES } from '@/lib/detect/fixture';
+import React, { useState, useEffect, useCallback } from 'react';
+import { fixtureFor } from '@/lib/detect/fixture';
 import { SCENARIOS, type ScenarioId, type DetectionResult } from '@/lib/types';
 import { ElevationView } from '@/components/radar/elevation-view';
 import { ContrastPanel } from '@/components/radar/contrast-panel';
 import { ClusterCards } from '@/components/radar/cluster-cards';
 import { ScenarioBar } from '@/components/radar/scenario-bar';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Radar,
-  Radio,
   Clock,
   Users,
   Network,
   Binary,
-  Shield,
-  Activity,
-  Sparkles,
+  ShieldCheck,
+  AlertTriangle,
+  Radio,
 } from 'lucide-react';
 
 export default function RadarPage() {
   const [selectedScenario, setSelectedScenario] = useState<ScenarioId>('filter_fault');
   const [result, setResult] = useState<DetectionResult>(() => fixtureFor('filter_fault'));
   const [isScanning, setIsScanning] = useState(false);
+  const [isLiveApi, setIsLiveApi] = useState(false);
 
-  // Handle scenario switch
-  const handleScenarioChange = (scenario: ScenarioId) => {
+  // Switch scenario via API with fixture fallback
+  const handleScenarioChange = useCallback(async (scenario: ScenarioId) => {
     setSelectedScenario(scenario);
-    setResult(fixtureFor(scenario));
-  };
-
-  // Handle Run Detection trigger with a brief scanning transition
-  const handleRunDetection = () => {
     setIsScanning(true);
-    setTimeout(() => {
-      setResult(fixtureFor(selectedScenario));
+
+    try {
+      // 1. Seed the scenario in the API store
+      const seedRes = await fetch('/api/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario }),
+      });
+
+      if (!seedRes.ok) throw new Error(`Seed failed with HTTP ${seedRes.status}`);
+
+      // 2. Run fresh detection on seeded data
+      const detectRes = await fetch('/api/detect', { method: 'POST' });
+      if (!detectRes.ok) throw new Error(`Detect failed with HTTP ${detectRes.status}`);
+
+      const data: DetectionResult = await detectRes.json();
+      setResult(data);
+      setIsLiveApi(true);
+    } catch (err) {
+      console.warn('API /api/seed or /api/detect failed; falling back to fixture:', err);
+      setResult(fixtureFor(scenario));
+      setIsLiveApi(false);
+    } finally {
       setIsScanning(false);
-    }, 450);
-  };
+    }
+  }, []);
+
+  // Run detection on demand
+  const handleRunDetection = useCallback(async () => {
+    setIsScanning(true);
+
+    try {
+      const detectRes = await fetch('/api/detect', { method: 'POST' });
+      if (!detectRes.ok) throw new Error(`Detect failed with HTTP ${detectRes.status}`);
+
+      const data: DetectionResult = await detectRes.json();
+      setResult(data);
+      setIsLiveApi(true);
+    } catch (err) {
+      console.warn('API /api/detect failed; falling back to fixture:', err);
+      // Small simulated latency for fixture mode
+      await new Promise((r) => setTimeout(r, 400));
+      setResult(fixtureFor(selectedScenario));
+      setIsLiveApi(false);
+    } finally {
+      setIsScanning(false);
+    }
+  }, [selectedScenario]);
+
+  // Initial load: sync with live API on mount
+  useEffect(() => {
+    handleScenarioChange('filter_fault');
+  }, [handleScenarioChange]);
+
+  const hasClusters = result.clusters && result.clusters.length > 0;
 
   return (
-    <div className="min-h-screen bg-zinc-50/50 dark:bg-black font-sans text-zinc-900 dark:text-zinc-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+    <div className="min-h-screen bg-zinc-50/50 dark:bg-black font-sans text-zinc-900 dark:text-zinc-100 overflow-x-hidden">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6">
         {/* Top App Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
           <div>
@@ -59,6 +103,16 @@ export default function RadarPage() {
                   <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider py-0 px-1.5">
                     MUJ POC · v1.0
                   </Badge>
+                  {isLiveApi ? (
+                    <Badge className="bg-emerald-600 text-white text-[10px] font-mono py-0 px-1.5 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      LIVE API
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] font-mono py-0 px-1.5 text-zinc-500">
+                      FIXTURE MODE
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                   Hostel food &amp; water-borne micro-outbreak early warning system
@@ -99,7 +153,7 @@ export default function RadarPage() {
         {/* Main Dashboard Layout */}
         <main className="space-y-6">
           {/* Hero Visual: Campus Infrastructure Elevation */}
-          <section aria-label="Campus Elevation">
+          <section aria-label="Campus Elevation" className="w-full overflow-x-auto">
             <ElevationView elevation={result.elevation} />
           </section>
 
@@ -108,7 +162,7 @@ export default function RadarPage() {
             <ContrastPanel result={result} />
           </section>
 
-          {/* Active Cluster Cards & Empty State */}
+          {/* Active Cluster Cards & Deliberate Empty State */}
           <section aria-label="Detected Clusters">
             <ClusterCards clusters={result.clusters} />
           </section>

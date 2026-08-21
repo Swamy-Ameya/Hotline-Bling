@@ -4,54 +4,80 @@ import type { ClusterStatus } from '@/lib/types';
  * Returns Tailwind classes for the attack-rate ramp normalized against elevation.maxAttackRate.
  * Strictly adheres to AGENTS.md §11 token specifications.
  */
-export function getAttackRateClasses(attackRate: number, maxAttackRate: number): {
+export function getAttackRateClasses(
+  attackRate: number,
+  maxAttackRate: number,
+  isFlagged = false,
+  suppressed = false,
+): {
   bg: string;
   text: string;
   border: string;
   ring: string;
 } {
-  if (attackRate <= 0 || maxAttackRate <= 0) {
+  if (attackRate <= 0) {
     return {
-      bg: 'bg-zinc-100 dark:bg-zinc-800/80',
-      text: 'text-zinc-700 dark:text-zinc-300',
-      border: 'border-zinc-200 dark:border-zinc-700/60',
+      bg: 'bg-zinc-100 dark:bg-zinc-900/80',
+      text: 'text-zinc-500 dark:text-zinc-400',
+      border: 'border-zinc-200 dark:border-zinc-800',
       ring: 'ring-zinc-300 dark:ring-zinc-700',
     };
   }
 
-  const share = attackRate / maxAttackRate;
-
-  if (share <= 0.25) {
+  // If node is explicitly flagged by spatial permutation test, highlight it in red
+  if (isFlagged) {
     return {
-      bg: 'bg-amber-100 dark:bg-amber-950/70',
-      text: 'text-amber-900 dark:text-amber-200',
-      border: 'border-amber-200 dark:border-amber-900/80',
+      bg: 'bg-red-600 dark:bg-red-600',
+      text: 'text-white font-bold',
+      border: 'border-red-700 dark:border-red-500',
+      ring: 'ring-red-500 dark:ring-red-400',
+    };
+  }
+
+  // If suppressed (<3 cases) and not flagged, keep it in calm baseline range
+  if (suppressed) {
+    return {
+      bg: 'bg-zinc-100/90 dark:bg-zinc-900/90',
+      text: 'text-zinc-400 dark:text-zinc-400',
+      border: 'border-zinc-200 dark:border-zinc-800',
+      ring: 'ring-zinc-300 dark:ring-zinc-700',
+    };
+  }
+
+  const effectiveMax = Math.max(maxAttackRate, 0.20);
+  const share = attackRate / effectiveMax;
+
+  if (share <= 0.25 || attackRate < 0.05) {
+    return {
+      bg: 'bg-amber-50 dark:bg-amber-950/40',
+      text: 'text-amber-800 dark:text-amber-300',
+      border: 'border-amber-200/60 dark:border-amber-900/50',
       ring: 'ring-amber-300 dark:ring-amber-800',
     };
   }
 
   if (share <= 0.5) {
     return {
-      bg: 'bg-amber-300 dark:bg-amber-800',
+      bg: 'bg-amber-200 dark:bg-amber-900/80',
       text: 'text-amber-950 dark:text-amber-100 font-medium',
-      border: 'border-amber-400 dark:border-amber-700',
+      border: 'border-amber-300 dark:border-amber-700',
       ring: 'ring-amber-400 dark:ring-amber-600',
     };
   }
 
   if (share <= 0.75) {
     return {
-      bg: 'bg-orange-400 dark:bg-orange-700',
+      bg: 'bg-orange-500 dark:bg-orange-600',
       text: 'text-white font-medium',
-      border: 'border-orange-500 dark:border-orange-600',
-      ring: 'ring-orange-500 dark:ring-orange-500',
+      border: 'border-orange-600 dark:border-orange-500',
+      ring: 'ring-orange-500 dark:ring-orange-400',
     };
   }
 
   return {
-    bg: 'bg-red-500 dark:bg-red-600',
+    bg: 'bg-red-600 dark:bg-red-600',
     text: 'text-white font-bold',
-    border: 'border-red-600 dark:border-red-500',
+    border: 'border-red-700 dark:border-red-500',
     ring: 'ring-red-500 dark:ring-red-400',
   };
 }
