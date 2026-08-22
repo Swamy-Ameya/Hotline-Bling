@@ -318,3 +318,175 @@
   }
   .neu-press { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THERMAL SYSTEM
+
+   The one visual idea in this product: a cold campus is neutral and quiet,
+   and heat exists ONLY where students are ill. Everything below is that ramp.
+
+   Read docs/CLAUDE-DESIGN.md before changing a value here. These tokens are a
+   contract — the map, the badges, the epi curve and the landing hero all read
+   from them, so a nudge here moves four surfaces at once.
+
+   Eight stops, cold to incandescent. t0 is not "low heat", it is ABSENCE of
+   heat and must stay chromatically dead — the moment t0 has a tint, every
+   healthy block on campus starts looking mildly sick.
+
+   Each stop carries three faces because blocks render as extruded voxels:
+   top is lit, right is turned away, left is in shadow.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* t0 — cold. Absence of signal. */
+  --t0-top:   oklch(0.940 0.012 200);
+  --t0-right: oklch(0.880 0.014 205);
+  --t0-left:  oklch(0.820 0.016 210);
+
+  /* t1 — teal. Below baseline, actively reassuring. */
+  --t1-top:   oklch(0.900 0.090 168);
+  --t1-right: oklch(0.830 0.085 168);
+  --t1-left:  oklch(0.750 0.078 170);
+
+  /* t2 — chartreuse. First measurable lift. */
+  --t2-top:   oklch(0.920 0.140 108);
+  --t2-right: oklch(0.850 0.135 105);
+  --t2-left:  oklch(0.770 0.125 102);
+
+  /* t3 — amber. WATCH anchor. */
+  --t3-top:   oklch(0.870 0.160 82);
+  --t3-right: oklch(0.790 0.155 76);
+  --t3-left:  oklch(0.700 0.145 70);
+
+  /* t4 — orange. */
+  --t4-top:   oklch(0.790 0.185 55);
+  --t4-right: oklch(0.700 0.180 48);
+  --t4-left:  oklch(0.610 0.170 42);
+
+  /* t5 — red-orange. ELEVATED anchor. */
+  --t5-top:   oklch(0.680 0.205 33);
+  --t5-right: oklch(0.590 0.200 28);
+  --t5-left:  oklch(0.500 0.185 25);
+
+  /* t6 — deep red. */
+  --t6-top:   oklch(0.550 0.195 15);
+  --t6-right: oklch(0.460 0.180 12);
+  --t6-left:  oklch(0.380 0.160 10);
+
+  /* t7 — ember core. CRITICAL anchor. Darkest, not brightest: the hottest
+     cubes in a real thermal render go black-magenta, and that reads as
+     "burnt" far faster than another red would. */
+  --t7-top:   oklch(0.420 0.155 358);
+  --t7-right: oklch(0.340 0.140 355);
+  --t7-left:  oklch(0.270 0.120 352);
+
+  /* Incandescent rim. The white-hot boundary between hot and cold ground.
+     Used as a 1px stroke on any block above watch, never as a fill. */
+  --thermal-rim:   oklch(0.985 0.055 88);
+  --thermal-ember: oklch(0.700 0.210 40);
+
+  /* Cold ground the voxels sit on. Neutral by law. */
+  --thermal-ground:      oklch(0.955 0.004 230);
+  --thermal-ground-edge: oklch(0.905 0.008 230);
+  --thermal-grid:        oklch(0.870 0.010 230);
+}
+
+.dark {
+  --t0-top:   oklch(0.330 0.010 230);
+  --t0-right: oklch(0.275 0.012 232);
+  --t0-left:  oklch(0.225 0.012 234);
+
+  --t1-top:   oklch(0.720 0.110 168);
+  --t1-right: oklch(0.630 0.100 168);
+  --t1-left:  oklch(0.540 0.090 170);
+
+  --t2-top:   oklch(0.850 0.160 108);
+  --t2-right: oklch(0.760 0.150 105);
+  --t2-left:  oklch(0.670 0.138 102);
+
+  --t3-top:   oklch(0.830 0.175 82);
+  --t3-right: oklch(0.740 0.168 76);
+  --t3-left:  oklch(0.650 0.155 70);
+
+  --t4-top:   oklch(0.760 0.200 55);
+  --t4-right: oklch(0.670 0.192 48);
+  --t4-left:  oklch(0.580 0.180 42);
+
+  --t5-top:   oklch(0.665 0.220 33);
+  --t5-right: oklch(0.575 0.212 28);
+  --t5-left:  oklch(0.485 0.196 25);
+
+  --t6-top:   oklch(0.545 0.210 15);
+  --t6-right: oklch(0.455 0.192 12);
+  --t6-left:  oklch(0.370 0.170 10);
+
+  --t7-top:   oklch(0.415 0.170 358);
+  --t7-right: oklch(0.335 0.152 355);
+  --t7-left:  oklch(0.265 0.130 352);
+
+  --thermal-rim:   oklch(0.980 0.070 88);
+  --thermal-ember: oklch(0.720 0.225 40);
+
+  --thermal-ground:      oklch(0.205 0.006 230);
+  --thermal-ground-edge: oklch(0.165 0.008 230);
+  --thermal-grid:        oklch(0.265 0.010 230);
+}
+
+/* ── Thermal glow ─────────────────────────────────────────────────────────
+   Sits on top of neu-raised rather than replacing it, so a hot card keeps
+   its physical shadow and gains heat instead of swapping one for the other. */
+
+.thermal-glow-watch {
+  box-shadow:
+    6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light),
+    0 0 0 1px color-mix(in oklch, var(--t3-top) 40%, transparent);
+}
+.thermal-glow-elevated {
+  box-shadow:
+    6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light),
+    0 0 0 1px color-mix(in oklch, var(--t5-top) 45%, transparent),
+    0 0 26px -8px var(--t5-top);
+}
+.thermal-glow-critical {
+  box-shadow:
+    6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light),
+    0 0 0 1px color-mix(in oklch, var(--thermal-ember) 55%, transparent),
+    0 0 34px -6px var(--thermal-ember),
+    0 0 64px -18px var(--t6-top);
+}
+
+/* Incandescent hairline for the hot/cold boundary. */
+.thermal-rim {
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--thermal-rim) 70%, transparent);
+}
+
+/* Tilt-shift. The reference art gets its depth from a shallow focal plane:
+   the near and far edges of the field fall out of focus and the eye is
+   forced to the middle. Apply to the map container, never to text. */
+.thermal-dof {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%, rgba(0,0,0,0.35) 6%, #000 26%,
+    #000 74%, rgba(0,0,0,0.35) 94%, transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%, rgba(0,0,0,0.35) 6%, #000 26%,
+    #000 74%, rgba(0,0,0,0.35) 94%, transparent 100%
+  );
+}
+.thermal-dof-far  { filter: blur(1.6px) saturate(0.88); opacity: 0.82; }
+.thermal-dof-near { filter: blur(1.1px) saturate(0.94); opacity: 0.88; }
+
+/* Slow thermal breathing. Distinct from animate-pulse-ring, which is a
+   discrete alarm; this is ambient and belongs to sustained heat. */
+@keyframes thermal-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.045); }
+}
+.thermal-breathe { animation: thermal-breathe 3.4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .thermal-breathe { animation: none; opacity: 0.8; }
+  .thermal-dof-far, .thermal-dof-near { filter: none; }
+}
