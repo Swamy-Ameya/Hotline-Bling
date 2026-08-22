@@ -4,6 +4,9 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import type { Confidence, RiskLevel } from '@/lib/domain/risk';
 
+// Re-exported so client components can keep importing it from one place.
+export { timeAgo, formatDateTime } from '@/lib/format';
+
 /* ------------------------------------------------------------- surfaces -- */
 
 export function Surface({
@@ -217,12 +220,3 @@ export function EmptyState({
   );
 }
 
-export function timeAgo(iso: string): string {
-  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return days === 1 ? 'yesterday' : `${days} days ago`;
-}
