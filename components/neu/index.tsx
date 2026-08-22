@@ -3,6 +3,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import type { Confidence, RiskLevel } from '@/lib/domain/risk';
+import { THERMAL_GLOW } from '@/components/thermal';
 
 // Re-exported so client components can keep importing it from one place.
 export { timeAgo, formatDateTime } from '@/lib/format';
@@ -26,9 +27,9 @@ export function Surface({
   return (
     <div
       className={cn(
-        'rounded-2xl',
+        'rounded-2xl transition-shadow',
         inset ? (small ? 'neu-inset-sm' : 'neu-inset') : small ? 'neu-raised-sm' : 'neu-raised',
-        glow && `neu-glow-${glow}`,
+        glow && THERMAL_GLOW[glow],
         press && 'neu-press cursor-pointer',
         className,
       )}
@@ -81,10 +82,10 @@ export function Stat({
 /* ---------------------------------------------------------------- badges -- */
 
 const RISK_STYLE: Record<RiskLevel, { chip: string; dot: string; text: string }> = {
-  normal: { chip: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', text: 'Normal' },
-  watch: { chip: 'bg-amber-50 text-amber-700', dot: 'bg-amber-400', text: 'Watch' },
-  elevated: { chip: 'bg-orange-50 text-orange-700', dot: 'bg-orange-500', text: 'Elevated' },
-  critical: { chip: 'bg-red-50 text-red-700', dot: 'bg-red-500', text: 'Critical' },
+  normal: { chip: 'bg-slate-100 text-slate-700', dot: 'bg-slate-400', text: 'Normal' },
+  watch: { chip: 'bg-amber-50 text-amber-900 border border-amber-200/60', dot: 'bg-amber-500', text: 'Watch' },
+  elevated: { chip: 'bg-orange-50 text-orange-950 border border-orange-200/60', dot: 'bg-orange-500', text: 'Elevated' },
+  critical: { chip: 'bg-red-50 text-red-950 border border-red-200/60 font-bold', dot: 'bg-red-600', text: 'Critical' },
 };
 
 export function RiskBadge({
@@ -100,7 +101,7 @@ export function RiskBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold',
+        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold tabular-nums',
         s.chip,
         className,
       )}
@@ -219,4 +220,3 @@ export function EmptyState({
     </Surface>
   );
 }
-

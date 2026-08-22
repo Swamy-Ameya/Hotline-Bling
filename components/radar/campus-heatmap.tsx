@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Hotspot } from '@/lib/domain/surveillance';
 import type { RiskLevel } from '@/lib/domain/risk';
+import { facesForRisk, isHot, ThermalLegend, ThermalKeyNote } from '@/components/thermal';
 
 /**
  * Isometric campus heatmap.
@@ -13,7 +14,7 @@ import type { RiskLevel } from '@/lib/domain/risk';
  * a rendering engine into the bundle for what is essentially twenty buildings.
  *
  * Height encodes how many students live in a block. Heat encodes how many are
- * ill. A tall dark building is a big healthy block; a glowing one needs a visit.
+ * ill. A tall cold tower is a big healthy block; a glowing one needs a visit.
  */
 
 const ISO_X = 0.86;
@@ -33,13 +34,6 @@ export interface HeatBlock {
   gx: number;
   gy: number;
 }
-
-const RISK_FILL: Record<RiskLevel, { top: string; left: string; right: string; glow: string }> = {
-  normal: { top: '#dfe5ee', left: '#c3ccdb', right: '#d2dae6', glow: 'transparent' },
-  watch: { top: '#fde9b8', left: '#e6c98a', right: '#f2daa2', glow: '#f59e0b' },
-  elevated: { top: '#fdc79a', left: '#e09a63', right: '#f0b07e', glow: '#f97316' },
-  critical: { top: '#fca5a5', left: '#dc6a6a', right: '#ee8888', glow: '#ef4444' },
-};
 
 function levelFor(cases: number, hotspots: Hotspot[], id: string): RiskLevel {
   const h = hotspots.find((x) => x.blockId === id);
@@ -80,135 +74,197 @@ export function CampusHeatmap({
   const H = 46 * ISO_Y;
 
   return (
-    <div className={cn('relative w-full overflow-hidden rounded-2xl', className)}>
-      <svg viewBox="-560 -300 1120 760" className="h-full w-full" role="img" aria-label="Campus heatmap">
-        <defs>
-          {(['watch', 'elevated', 'critical'] as RiskLevel[]).map((lv) => (
-            <radialGradient key={lv} id={`heat-${lv}`}>
-              <stop offset="0%" stopColor={RISK_FILL[lv].glow} stopOpacity="0.55" />
-              <stop offset="45%" stopColor={RISK_FILL[lv].glow} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={RISK_FILL[lv].glow} stopOpacity="0" />
+    <div className={cn('relative w-full overflow-hidden rounded-2xl flex flex-col', className)}>
+      <div className="relative flex-1 w-full overflow-hidden">
+        <svg
+          viewBox="-560 -300 1120 760"
+          className="h-full w-full"
+          role="img"
+          aria-label="Campus thermal heatmap"
+        >
+          <defs>
+            <radialGradient id="heat-watch">
+              <stop offset="0%" stopColor="var(--t3-top)" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="var(--t3-top)" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="var(--t3-top)" stopOpacity="0" />
             </radialGradient>
-          ))}
-          <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e8edf5" />
-            <stop offset="100%" stopColor="#dbe2ec" />
-          </linearGradient>
-          <filter id="soft-shadow" x="-60%" y="-60%" width="220%" height="220%">
-            <feDropShadow dx="0" dy="7" stdDeviation="9" floodColor="#8494ad" floodOpacity="0.28" />
-          </filter>
-        </defs>
+            <radialGradient id="heat-elevated">
+              <stop offset="0%" stopColor="var(--t5-top)" stopOpacity="0.5" />
+              <stop offset="50%" stopColor="var(--t5-top)" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="var(--t5-top)" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="heat-critical">
+              <stop offset="0%" stopColor="var(--t7-top)" stopOpacity="0.65" />
+              <stop offset="45%" stopColor="var(--t6-top)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="var(--t5-top)" stopOpacity="0" />
+            </radialGradient>
 
-        {/* ground plane */}
-        <g opacity="0.85">
-          {Array.from({ length: 15 }, (_, i) => {
-            const a = project(i - 2, -2);
-            const b = project(i - 2, 12);
-            return <line key={`gx${i}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#cdd6e3" strokeWidth="1" />;
-          })}
-          {Array.from({ length: 15 }, (_, i) => {
-            const a = project(-2, i - 2);
-            const b = project(12, i - 2);
-            return <line key={`gy${i}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#cdd6e3" strokeWidth="1" />;
-          })}
-        </g>
+            <filter id="soft-shadow" x="-60%" y="-60%" width="220%" height="220%">
+              <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#8494ad" floodOpacity="0.3" />
+            </filter>
+          </defs>
 
-        {/* heat pools, painted on the ground under the buildings */}
-        {drawn
-          .filter((b) => b.level !== 'normal')
-          .map((b) => (
-            <ellipse
-              key={`heat-${b.id}`}
-              cx={b.bx}
-              cy={b.by}
-              rx={150}
-              ry={90}
-              fill={`url(#heat-${b.level})`}
-              className="animate-breathe"
-            />
-          ))}
+          {/* ground plane grid */}
+          <g opacity="0.75">
+            {Array.from({ length: 15 }, (_, i) => {
+              const a = project(i - 2, -2);
+              const b = project(i - 2, 12);
+              return (
+                <line
+                  key={`gx${i}`}
+                  x1={a[0]}
+                  y1={a[1]}
+                  x2={b[0]}
+                  y2={b[1]}
+                  stroke="#d2dbe7"
+                  strokeWidth="1"
+                />
+              );
+            })}
+            {Array.from({ length: 15 }, (_, i) => {
+              const a = project(-2, i - 2);
+              const b = project(12, i - 2);
+              return (
+                <line
+                  key={`gy${i}`}
+                  x1={a[0]}
+                  y1={a[1]}
+                  x2={b[0]}
+                  y2={b[1]}
+                  stroke="#d2dbe7"
+                  strokeWidth="1"
+                />
+              );
+            })}
+          </g>
 
-        {/* buildings */}
-        {drawn.map((b, i) => {
-          const c = RISK_FILL[b.level];
-          const active = hovered === b.id || selectedId === b.id;
-          const topPts = [
-            [b.x, b.y],
-            [b.x + W, b.y + H],
-            [b.x, b.y + 2 * H],
-            [b.x - W, b.y + H],
-          ]
-            .map((p) => p.join(','))
-            .join(' ');
-
-          return (
-            <g
-              key={b.id}
-              className="cursor-pointer animate-rise"
-              style={{ animationDelay: `${i * 26}ms` }}
-              onMouseEnter={() => setHovered(b.id)}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => onSelect?.(b.id)}
-              filter={active ? 'url(#soft-shadow)' : undefined}
-            >
-              {/* left face */}
-              <polygon
-                points={`${b.x - W},${b.y + H} ${b.x},${b.y + 2 * H} ${b.x},${b.y + 2 * H + b.h} ${b.x - W},${b.y + H + b.h}`}
-                fill={c.left}
+          {/* heat pools, painted on the ground under hot buildings */}
+          {drawn
+            .filter((b) => isHot(b.level))
+            .map((b) => (
+              <ellipse
+                key={`heat-${b.id}`}
+                cx={b.bx}
+                cy={b.by}
+                rx={160}
+                ry={95}
+                fill={`url(#heat-${b.level})`}
+                className="thermal-breathe"
               />
-              {/* right face */}
-              <polygon
-                points={`${b.x},${b.y + 2 * H} ${b.x + W},${b.y + H} ${b.x + W},${b.y + H + b.h} ${b.x},${b.y + 2 * H + b.h}`}
-                fill={c.right}
-              />
-              {/* floor lines, so the height reads as storeys not a slab */}
-              {Array.from({ length: b.floors - 1 }, (_, f) => {
-                const dy = ((f + 1) * b.h) / b.floors;
-                return (
-                  <g key={f} opacity="0.28">
-                    <line x1={b.x - W} y1={b.y + H + dy} x2={b.x} y2={b.y + 2 * H + dy} stroke="#ffffff" strokeWidth="1" />
-                    <line x1={b.x} y1={b.y + 2 * H + dy} x2={b.x + W} y2={b.y + H + dy} stroke="#ffffff" strokeWidth="1" />
-                  </g>
-                );
-              })}
-              {/* roof */}
-              <polygon
-                points={topPts}
-                fill={c.top}
-                stroke={active ? '#475569' : 'rgba(255,255,255,0.75)'}
-                strokeWidth={active ? 1.6 : 1}
-              />
+            ))}
 
-              {/* pulse marker on anything that needs attention */}
-              {b.level !== 'normal' && (
-                <g>
-                  <circle cx={b.x} cy={b.y - 14} r="7" fill={c.glow} opacity="0.28" className="animate-pulse-ring" />
-                  <circle cx={b.x} cy={b.y - 14} r="4.5" fill={c.glow} />
-                </g>
-              )}
+          {/* buildings (thermal voxels) */}
+          {drawn.map((b, i) => {
+            const faces = facesForRisk(b.level);
+            const hot = isHot(b.level);
+            const active = hovered === b.id || selectedId === b.id;
+            const topPts = [
+              [b.x, b.y],
+              [b.x + W, b.y + H],
+              [b.x, b.y + 2 * H],
+              [b.x - W, b.y + H],
+            ]
+              .map((p) => p.join(','))
+              .join(' ');
 
-              <text
-                x={b.x}
-                y={b.y + H + 5}
-                textAnchor="middle"
-                className="pointer-events-none select-none"
-                fontSize="14"
-                fontWeight="700"
-                fill={b.level === 'normal' ? '#64748b' : '#7f1d1d'}
+            return (
+              <g
+                key={b.id}
+                className="cursor-pointer animate-rise transition-transform"
+                style={{ animationDelay: `${i * 24}ms` }}
+                onMouseEnter={() => setHovered(b.id)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => onSelect?.(b.id)}
+                filter={active ? 'url(#soft-shadow)' : undefined}
               >
-                {b.name}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                {/* left face — in shadow */}
+                <polygon
+                  points={`${b.x - W},${b.y + H} ${b.x},${b.y + 2 * H} ${b.x},${b.y + 2 * H + b.h} ${b.x - W},${b.y + H + b.h}`}
+                  fill={faces.left}
+                />
+                {/* right face — turned away */}
+                <polygon
+                  points={`${b.x},${b.y + 2 * H} ${b.x + W},${b.y + H} ${b.x + W},${b.y + H + b.h} ${b.x},${b.y + 2 * H + b.h}`}
+                  fill={faces.right}
+                />
 
-      {/* hover card */}
-      {hovered && (
-        <HoverCard block={drawn.find((b) => b.id === hovered)!} hotspot={hotspots.find((h) => h.blockId === hovered)} />
-      )}
+                {/* floor division lines */}
+                {Array.from({ length: b.floors - 1 }, (_, f) => {
+                  const dy = ((f + 1) * b.h) / b.floors;
+                  return (
+                    <g key={f} opacity="0.35">
+                      <line
+                        x1={b.x - W}
+                        y1={b.y + H + dy}
+                        x2={b.x}
+                        y2={b.y + 2 * H + dy}
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                      />
+                      <line
+                        x1={b.x}
+                        y1={b.y + 2 * H + dy}
+                        x2={b.x + W}
+                        y2={b.y + H + dy}
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                      />
+                    </g>
+                  );
+                })}
 
-      <Legend />
+                {/* roof (lit top face with incandescent rim on hot nodes) */}
+                <polygon
+                  points={topPts}
+                  fill={faces.top}
+                  stroke={hot ? 'var(--thermal-rim)' : active ? '#334155' : 'rgba(255,255,255,0.75)'}
+                  strokeWidth={hot ? 1.5 : active ? 1.5 : 1}
+                />
+
+                {/* pulse alarm on active hotspots */}
+                {hot && (
+                  <g>
+                    <circle
+                      cx={b.x}
+                      cy={b.y - 14}
+                      r="8"
+                      fill={faces.top}
+                      opacity="0.3"
+                      className="animate-pulse-ring"
+                    />
+                    <circle cx={b.x} cy={b.y - 14} r="4.5" fill={faces.top} stroke="#ffffff" strokeWidth="1" />
+                  </g>
+                )}
+
+                {/* Block label */}
+                <text
+                  x={b.x}
+                  y={b.y + H + 5}
+                  textAnchor="middle"
+                  className="pointer-events-none select-none text-[13px] font-bold"
+                  fill={b.level === 'critical' ? '#ffffff' : b.level === 'normal' ? '#475569' : '#1e293b'}
+                >
+                  {b.name}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* hover tooltip card */}
+        {hovered && (
+          <HoverCard
+            block={drawn.find((b) => b.id === hovered)!}
+            hotspot={hotspots.find((h) => h.blockId === hovered)}
+          />
+        )}
+      </div>
+
+      {/* Heatmap Footer Legend & Keynote */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/50 bg-white/70 px-4 py-2.5 backdrop-blur-md">
+        <ThermalKeyNote />
+        <ThermalLegend />
+      </div>
     </div>
   );
 }
@@ -221,10 +277,10 @@ function HoverCard({
   hotspot?: Hotspot;
 }) {
   return (
-    <div className="pointer-events-none absolute left-4 top-4 max-w-xs rounded-xl bg-white/92 px-4 py-3 shadow-lg backdrop-blur-sm animate-rise">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-bold text-slate-800">Block {block.name}</span>
-        <span className="text-[11px] uppercase tracking-wide text-slate-400">
+    <div className="pointer-events-none absolute left-4 top-4 max-w-xs rounded-xl bg-white/95 px-4 py-3 shadow-xl border border-slate-200/80 backdrop-blur-md animate-rise z-20">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-bold text-slate-900">Block {block.name}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           {block.gender === 'boys' ? "Boys' hostel" : "Girls' hostel"}
         </span>
       </div>
@@ -232,36 +288,16 @@ function HoverCard({
         {block.capacity.toLocaleString()} students · {block.floors} floors
       </div>
       {hotspot ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-700">{hotspot.comparison}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-800 font-medium">
+          {hotspot.comparison}
+        </p>
       ) : (
         <p className="mt-2 text-xs leading-relaxed text-slate-500">
           {block.cases === 0
             ? 'No reports in the last three days.'
-            : `${block.cases} report${block.cases === 1 ? '' : 's'} — within the usual range.`}
+            : `${block.cases} report${block.cases === 1 ? '' : 's'} — within the normal range.`}
         </p>
       )}
-    </div>
-  );
-}
-
-function Legend() {
-  const items: { level: RiskLevel; label: string }[] = [
-    { level: 'normal', label: 'Normal' },
-    { level: 'watch', label: 'Watch' },
-    { level: 'elevated', label: 'Elevated' },
-    { level: 'critical', label: 'Critical' },
-  ];
-  return (
-    <div className="absolute bottom-4 right-4 flex items-center gap-3 rounded-xl bg-white/85 px-3.5 py-2 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur-sm">
-      {items.map((i) => (
-        <span key={i.level} className="flex items-center gap-1.5">
-          <span
-            className="size-2.5 rounded-[3px]"
-            style={{ background: RISK_FILL[i.level].top, outline: '1px solid rgba(0,0,0,0.06)' }}
-          />
-          {i.label}
-        </span>
-      ))}
     </div>
   );
 }

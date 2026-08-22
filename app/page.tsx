@@ -12,9 +12,10 @@ import {
 import { AppShell } from '@/components/neu/shell';
 import { NeuButton, RiskBadge, Surface } from '@/components/neu';
 import { buildSituationReport } from '@/lib/domain/surveillance';
-import { countStudents } from '@/lib/db';
-import { BLOCKS } from '@/lib/domain/campus';
+import { countStudents, getBlockRollups } from '@/lib/db';
+import { BLOCKS, blockCapacity } from '@/lib/domain/campus';
 import { QRCodeSVG } from '@/components/qr-code';
+import { CampusHeatmap, type HeatBlock } from '@/components/radar/campus-heatmap';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,18 +42,43 @@ const STEPS = [
   },
 ];
 
+function gridPosition(index: number, gender: 'boys' | 'girls'): { gx: number; gy: number } {
+  if (gender === 'boys') {
+    return { gx: index % 4, gy: 4 + Math.floor(index / 4) };
+  }
+  return { gx: 5 + (index % 4), gy: Math.floor(index / 4) };
+}
+
 export default async function HomePage() {
   const report = buildSituationReport();
   const students = countStudents();
+  const rollups = getBlockRollups(72);
+
+  let boys = 0;
+  let girls = 0;
+
+  const heatBlocks: HeatBlock[] = BLOCKS.map((b) => {
+    const pos = b.gender === 'boys' ? gridPosition(boys++, 'boys') : gridPosition(girls++, 'girls');
+    const roll = rollups.find((r) => r.blockId === b.id);
+    return {
+      id: b.id,
+      name: b.name,
+      gender: b.gender,
+      cases: roll?.cases ?? 0,
+      capacity: blockCapacity(b),
+      floors: b.floors,
+      ...pos,
+    };
+  });
 
   return (
     <AppShell>
       {/* ── hero ── */}
-      <section className="mx-auto max-w-7xl px-6 pb-10 pt-16">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_1fr]">
+      <section className="mx-auto max-w-7xl px-6 pb-10 pt-14">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
           <div className="animate-rise">
             <span className="inline-flex items-center gap-2 rounded-full neu-raised-sm px-3.5 py-1.5 text-xs font-semibold text-slate-500">
-              <Droplets className="size-3.5" />
+              <Droplets className="size-3.5 text-indigo-500" />
               Manipal University Jaipur
             </span>
 
@@ -97,7 +123,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* live status card */}
+          {/* live status card with live thermal preview */}
           <Surface glow={report.overall} className="p-7 animate-rise stagger-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -110,17 +136,25 @@ export default async function HomePage() {
               {report.headline}
             </p>
 
-            <div className="mt-6 grid grid-cols-3 gap-3">
+            <div className="mt-5 grid grid-cols-3 gap-3">
               {[
                 { v: report.totalCases, l: 'ill' },
                 { v: report.doctorConfirmed, l: 'seen by doctor' },
                 { v: report.hotspots.length, l: 'blocks flagged' },
               ].map((s) => (
-                <Surface inset small key={s.l} className="px-3 py-3 text-center">
+                <Surface inset small key={s.l} className="px-3 py-2.5 text-center">
                   <div className="text-2xl font-bold tabular-nums text-slate-800">{s.v}</div>
                   <div className="mt-0.5 text-[11px] leading-tight text-slate-500">{s.l}</div>
                 </Surface>
               ))}
+            </div>
+
+            <div className="mt-5 rounded-xl overflow-hidden neu-inset p-1">
+              <CampusHeatmap
+                blocks={heatBlocks}
+                hotspots={report.hotspots}
+                className="h-[220px]"
+              />
             </div>
 
             {report.failingWaterSources.length > 0 && (
@@ -136,7 +170,7 @@ export default async function HomePage() {
             )}
 
             <Link href="/radar" className="mt-5 block">
-              <NeuButton className="w-full">See the map</NeuButton>
+              <NeuButton className="w-full">See full campus radar →</NeuButton>
             </Link>
           </Surface>
         </div>
