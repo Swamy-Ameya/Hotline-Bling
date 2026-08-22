@@ -3,8 +3,6 @@ import { BLOCKS, blockCapacity } from '@/lib/domain/campus';
 import { getBlockRollups } from '@/lib/db';
 import { AppShell } from '@/components/neu/shell';
 import { RadarClient } from './radar-client';
-import { getSession } from '@/lib/auth/session';
-import { redirect } from 'next/navigation';
 import type { HeatBlock } from '@/components/radar/campus-heatmap';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +21,6 @@ function gridPosition(index: number, gender: 'boys' | 'girls'): { gx: number; gy
 }
 
 export default async function RadarPage() {
-  const session = await getSession();
-  if (session?.role === 'student') {
-    redirect('/app');
-  }
-
   const report = buildSituationReport();
   const rollups = getBlockRollups(72);
 

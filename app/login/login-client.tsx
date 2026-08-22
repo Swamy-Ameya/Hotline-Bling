@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, Stethoscope, User, Lock, ArrowRight, CheckCircle2, Sparkles, Building } from 'lucide-react';
+import { Shield, Stethoscope, User, Lock, ArrowRight, Sparkles, Building, ArrowLeft } from 'lucide-react';
 import { Surface, NeuButton, Spinner } from '@/components/neu';
 
 type Role = 'student' | 'doctor' | 'warden';
@@ -78,6 +79,15 @@ export function LoginClient() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-12">
+      <div className="mb-6 flex justify-between items-center">
+        <Link
+          href="/radar"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900"
+        >
+          <ArrowLeft className="size-3.5" /> Back to Dashboard
+        </Link>
+      </div>
+
       <div className="text-center mb-8">
         <div className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl neu-inset text-slate-700">
           <Shield className="size-6" />
@@ -192,10 +202,10 @@ export function LoginClient() {
               className="flex items-center justify-between rounded-xl neu-inset-sm px-3.5 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
             >
               <div>
-                <span className="font-bold text-slate-900 block">Demo Student</span>
+                <span className="font-bold text-slate-900 block">🎓 Demo Student</span>
                 <span className="text-[11px] text-slate-400 font-mono">2502050001 (Ishaan Reddy · B1)</span>
               </div>
-              <span className="text-xs text-indigo-600 font-semibold">Tap to sign in →</span>
+              <span className="text-xs text-indigo-600 font-semibold">Tap to enter /app →</span>
             </button>
 
             <button
@@ -205,10 +215,10 @@ export function LoginClient() {
               className="flex items-center justify-between rounded-xl neu-inset-sm px-3.5 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
             >
               <div>
-                <span className="font-bold text-slate-900 block">Demo Doctor</span>
+                <span className="font-bold text-slate-900 block">🩺 Demo Doctor</span>
                 <span className="text-[11px] text-slate-400">Dr. Meenakshi Rao (Health Centre)</span>
               </div>
-              <span className="text-xs text-indigo-600 font-semibold">Tap to sign in →</span>
+              <span className="text-xs text-indigo-600 font-semibold">Tap to enter /doctor →</span>
             </button>
 
             <button
@@ -218,10 +228,10 @@ export function LoginClient() {
               className="flex items-center justify-between rounded-xl neu-inset-sm px-3.5 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
             >
               <div>
-                <span className="font-bold text-slate-900 block">Demo Warden</span>
+                <span className="font-bold text-slate-900 block">🏢 Demo Warden</span>
                 <span className="text-[11px] text-slate-400">Warden — B4 (Critical Hotspot)</span>
               </div>
-              <span className="text-xs text-indigo-600 font-semibold">Tap to sign in →</span>
+              <span className="text-xs text-indigo-600 font-semibold">Tap to enter /radar →</span>
             </button>
           </div>
         </div>
