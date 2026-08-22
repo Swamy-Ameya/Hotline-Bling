@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Beaker, Building2, Droplets, Layers, Users } from 'lucide-react';
+import { ArrowLeft, Beaker, Building2, Droplets, Layers, Users, UtensilsCrossed } from 'lucide-react';
 import { AppShell } from '@/components/neu/shell';
 import { ConfidencePill, RiskBadge, Surface } from '@/components/neu';
 import { timeAgo } from '@/lib/format';
-import { BLOCKS, blockById, blockCapacity, floorCapacity } from '@/lib/domain/campus';
+import { BLOCKS, blockById, blockCapacity, floorCapacity, messForBlock } from '@/lib/domain/campus';
 import { SOURCE_META } from '@/lib/domain/risk';
 import { buildSituationReport } from '@/lib/domain/surveillance';
-import { getCases, getWaterTests } from '@/lib/db';
+import { getCases, getMealAttendees, getRecentMeals, getWaterTests } from '@/lib/db';
 import { SYMPTOM_LABEL } from '@/lib/db/types';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,11 @@ export default async function BlockPage({ params }: { params: Promise<{ blockId:
   const cases = getCases(72).filter((c) => c.blockName === block.name);
   const tests = getWaterTests(block.tankId).slice(0, 4);
   const latest = tests[0];
+
+  const mess = messForBlock(block.id);
+  const recentMeals = mess
+    ? getRecentMeals(72).filter((m) => m.messId === mess.id).slice(0, 6)
+    : [];
 
   const perFloor = Array.from({ length: block.floors }, (_, i) => {
     const floor = i + 1;
@@ -61,7 +66,7 @@ export default async function BlockPage({ params }: { params: Promise<{ blockId:
                   </h1>
                   <p className="text-sm text-slate-500">
                     {block.gender === 'boys' ? "Boys' hostel" : "Girls' hostel"} ·{' '}
-                    {blockCapacity(block).toLocaleString()} students · {block.floors} floors
+                    {blockCapacity(block).toLocaleString()} students · {block.floors} floors · Served by {mess?.name ?? 'Central Mess'}
                   </p>
                 </div>
               </div>
@@ -262,6 +267,51 @@ export default async function BlockPage({ params }: { params: Promise<{ blockId:
                   </li>
                 ))}
               </ul>
+            </Surface>
+
+            {/* Mess attendance in 72h panel */}
+            <Surface className="p-6 animate-rise stagger-5">
+              <div className="mb-4 flex items-center gap-2">
+                <UtensilsCrossed className="size-4 text-slate-400" />
+                <h2 className="text-base font-bold text-slate-800">Mess attendance (72h)</h2>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                {mess?.name ?? 'Assigned mess'} scan history & plate turnouts
+              </p>
+
+              {recentMeals.length === 0 ? (
+                <p className="text-xs text-slate-400">No meal attendance records in window.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentMeals.map((m) => {
+                    const attendeesCount = getMealAttendees(m.id).size;
+                    const isSuspect = report.suspectMeals.some((sm) => sm.mealId === m.id);
+                    const d = new Date(m.opensAt);
+                    const day = d.toLocaleDateString('en-IN', { weekday: 'short' });
+                    return (
+                      <Surface
+                        key={m.id}
+                        inset
+                        small
+                        className={`px-3 py-2 text-xs ${isSuspect ? 'ring-1 ring-orange-400 bg-orange-50/50' : ''}`}
+                      >
+                        <div className="flex items-center justify-between font-semibold text-slate-700 capitalize">
+                          <span>{day} {m.mealType}</span>
+                          <span className="tabular-nums text-slate-500">{attendeesCount} plates</span>
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500 truncate">
+                          {m.menuItems.join(', ')}
+                        </div>
+                        {isSuspect && (
+                          <div className="mt-1 text-[10px] font-bold text-orange-600">
+                            ⚠ Flagged as statistically unusual
+                          </div>
+                        )}
+                      </Surface>
+                    );
+                  })}
+                </div>
+              )}
             </Surface>
           </div>
         </div>

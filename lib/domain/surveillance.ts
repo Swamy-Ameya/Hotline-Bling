@@ -17,7 +17,6 @@ import {
   RO_PLANT,
   blockById,
   blockCapacity,
-  floorCapacity,
 } from '@/lib/domain/campus';
 import {
   assessRisk,
@@ -28,6 +27,7 @@ import {
   type RiskAssessment,
   type RiskLevel,
 } from '@/lib/domain/risk';
+import { WEIGHT } from '@/lib/domain/weighting';
 import {
   getBlockRollups,
   getCases,
@@ -52,6 +52,8 @@ export interface Hotspot {
   confidence: Confidence;
   source: LikelySource;
   cases: number;
+  rawCases: number;
+  weightedCases: number;
   usual: number;
   doctorConfirmed: number;
   summary: string;
@@ -132,50 +134,59 @@ function avgSeverity(cases: CaseView[]): number {
 
 /* ------------------------------------------------------------ meal check -- */
 
-function rankMeals(cases: CaseView[], caseStudentIds: Set<string>): MealSuspicion[] {
-  const meals = getRecentMeals(96);
-  const out: MealSuspicion[] = [];
+interface PreparedMeal {
+  meal: MessMealRow;
+  attendees: Set<string>;
+  normalTurnout: number;
+  turnoutPct: number;
+  label: string;
+}
 
+function prepareRecentMeals(): PreparedMeal[] {
+  const meals = getRecentMeals(96);
+  const prepared: PreparedMeal[] = [];
   for (const meal of meals) {
     const attendees = getMealAttendees(meal.id);
     if (attendees.size === 0) continue;
-
-    let ate = 0;
-    for (const id of caseStudentIds) if (attendees.has(id)) ate++;
-    if (ate < 3) continue;
-
-    const share = ate / Math.max(1, caseStudentIds.size);
-
-    /**
-     * The comparison that actually matters.
-     *
-     * "32 of the 46 ill students ate lunch" sounds damning until you notice
-     * that three quarters of the whole hostel eats lunch every day. Of course
-     * most ill people ate it — most people ate it. On its own that number
-     * would send a warden to inspect a perfectly clean kitchen.
-     *
-     * So we compare against how many students normally turn up to that
-     * sitting. A meal is only suspicious when the people who are ill ate it at
-     * a noticeably higher rate than everybody else did.
-     */
     const eligible = getMessEligibleCount(meal.messId);
     const normalTurnout = eligible > 0 ? attendees.size / eligible : 0;
     if (normalTurnout <= 0) continue;
+    prepared.push({
+      meal,
+      attendees,
+      normalTurnout,
+      turnoutPct: Math.round(normalTurnout * 100),
+      label: mealLabel(meal),
+    });
+  }
+  return prepared;
+}
 
-    const howMuchHigher = share / normalTurnout;
+function rankMealsFast(caseStudentIds: Set<string>, preparedMeals: PreparedMeal[]): MealSuspicion[] {
+  if (caseStudentIds.size === 0) return [];
+  const out: MealSuspicion[] = [];
+
+  for (const pm of preparedMeals) {
+    let ate = 0;
+    for (const id of caseStudentIds) {
+      if (pm.attendees.has(id)) ate++;
+    }
+    if (ate < 3) continue;
+
+    const share = ate / caseStudentIds.size;
+    const howMuchHigher = share / pm.normalTurnout;
     if (share < 0.6 || howMuchHigher < 1.5) continue;
 
-    const turnoutPct = Math.round(normalTurnout * 100);
     out.push({
-      mealId: meal.id,
-      label: mealLabel(meal),
-      menuItems: meal.menuItems,
-      servedAt: meal.opensAt,
+      mealId: pm.meal.id,
+      label: pm.label,
+      menuItems: pm.meal.menuItems,
+      servedAt: pm.meal.opensAt,
       casesWhoAte: ate,
       totalCases: caseStudentIds.size,
       phrase:
         `${ate} of the ${caseStudentIds.size} students who are ill ate this meal, ` +
-        `compared with about ${turnoutPct} in 100 students overall`,
+        `compared with about ${pm.turnoutPct} in 100 students overall`,
       weight: howMuchHigher,
     });
   }
@@ -204,6 +215,7 @@ export function buildSituationReport(): SituationReport {
   const dayScholarCases = getDayScholarCases(WINDOW_HOURS);
   const caseStudentIds = new Set(counted.map((c) => c.studentId));
 
+  const preparedMeals = prepareRecentMeals();
   const hotspots: Hotspot[] = [];
 
   for (const r of rollups) {
@@ -215,13 +227,19 @@ export function buildSituationReport(): SituationReport {
 
     const floorsHit = new Set(blockCases.map((c) => c.floor).filter(Boolean)).size;
     const blockCaseIds = new Set(blockCases.map((c) => c.studentId));
-    const mealsHere = rankMeals(blockCases, blockCaseIds);
+    const mealsHere = rankMealsFast(blockCaseIds, preparedMeals);
     const topMeal = mealsHere[0];
+
+    const doctorCount = blockCases.filter((c) => c.origin === 'doctor').length;
+    const selfCount = blockCases.length - doctorCount;
+    const weightedTotal = doctorCount * WEIGHT.doctor + selfCount * WEIGHT.self;
 
     const signal: ClusterSignal = {
       cases: blockCases.length,
+      rawCases: blockCases.length,
+      weightedCases: weightedTotal,
       usual: usualFor(blockCapacity(block), rate),
-      doctorConfirmed: blockCases.filter((c) => c.origin === 'doctor').length,
+      doctorConfirmed: doctorCount,
       floorsAffected: Math.max(1, floorsHit),
       blocksAffected: 1,
       dayScholarsAffected: dayScholarCases >= 3,
@@ -243,6 +261,8 @@ export function buildSituationReport(): SituationReport {
       confidence: assessment.confidence,
       source: assessment.source,
       cases: signal.cases,
+      rawCases: signal.cases,
+      weightedCases: weightedTotal,
       usual: signal.usual,
       doctorConfirmed: signal.doctorConfirmed,
       summary: assessment.summary,
@@ -257,7 +277,7 @@ export function buildSituationReport(): SituationReport {
   hotspots.sort((a, b) => riskRank(b.level) - riskRank(a.level) || b.cases - a.cases);
 
   const overall: RiskLevel = hotspots.length ? hotspots[0].level : 'normal';
-  const suspectMeals = rankMeals(counted, caseStudentIds);
+  const suspectMeals = rankMealsFast(caseStudentIds, preparedMeals);
 
   const failingWaterSources = [RO_PLANT, ...BLOCKS.map((b) => ({ id: b.tankId, name: `${b.name} overhead tank` }))]
     .map((src) => {

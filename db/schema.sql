@@ -12,19 +12,20 @@
 --  "B4, second floor" is an address someone can walk to.
 -- ===========================================================================
 
-drop table if exists alerts             cascade;
-drop table if exists cluster_cases      cascade;
-drop table if exists clusters           cascade;
-drop table if exists water_tests        cascade;
-drop table if exists meal_attendance    cascade;
-drop table if exists mess_meals         cascade;
-drop table if exists self_reports       cascade;
-drop table if exists consultations      cascade;
-drop table if exists students           cascade;
-drop table if exists staff              cascade;
-drop table if exists messes             cascade;
-drop table if exists blocks             cascade;
-drop table if exists water_sources      cascade;
+drop table if exists notifications       cascade;
+drop table if exists alerts              cascade;
+drop table if exists cluster_cases       cascade;
+drop table if exists clusters            cascade;
+drop table if exists water_tests         cascade;
+drop table if exists meal_attendance     cascade;
+drop table if exists mess_meals          cascade;
+drop table if exists self_reports        cascade;
+drop table if exists consultations       cascade;
+drop table if exists students            cascade;
+drop table if exists staff               cascade;
+drop table if exists messes              cascade;
+drop table if exists blocks              cascade;
+drop table if exists water_sources       cascade;
 
 drop type if exists risk_level    cascade;
 drop type if exists confidence    cascade;
@@ -32,6 +33,7 @@ drop type if exists source_kind   cascade;
 drop type if exists report_origin cascade;
 drop type if exists staff_role    cascade;
 drop type if exists alert_state   cascade;
+drop type if exists pool_id       cascade;
 
 create type risk_level    as enum ('normal','watch','elevated','critical');
 create type confidence    as enum ('low','medium','high');
@@ -39,6 +41,7 @@ create type source_kind   as enum ('block_water','campus_water','mess_food','per
 create type report_origin as enum ('self','doctor');
 create type staff_role    as enum ('doctor','warden','admin');
 create type alert_state   as enum ('draft','sent','resolved','dismissed');
+create type pool_id       as enum ('gastro','respiratory','fever','skin','other');
 
 -- --------------------------------------------------------------------------
 -- Physical campus
@@ -78,7 +81,7 @@ create table messes (
 
 create table students (
   id           uuid primary key default gen_random_uuid(),
-  registration text unique not null,     -- university registration number
+  registration text unique not null,     -- university registration number (250205xxxx)
   name         text not null,
   email        text,
   phone        text,
@@ -121,11 +124,13 @@ create table consultations (
   diagnosis     text,
   prescription  text,
   notes         text,
+  pool          pool_id not null default 'gastro',
   -- meals the student recalls eating in the 72h before onset
   recalled_meal_ids uuid[] not null default '{}'
 );
 create index on consultations(onset_at);
 create index on consultations(student_id);
+create index on consultations(pool);
 
 -- self_reports = a student flagging symptoms from their phone. Lower trust,
 -- but it arrives a day or two earlier than a clinic visit, which is where the
@@ -137,6 +142,7 @@ create table self_reports (
   onset_at      timestamptz not null,
   reported_at   timestamptz not null default now(),
   severity      int not null default 2,
+  pool          pool_id not null default 'gastro',
   recalled_meal_ids uuid[] not null default '{}',
   -- Set when this student had already received an alert. Excluded from
   -- detection so a warning cannot manufacture the evidence for the next one.
@@ -144,6 +150,7 @@ create table self_reports (
 );
 create index on self_reports(onset_at);
 create index on self_reports(prompted_by_alert_id);
+create index on self_reports(pool);
 
 -- --------------------------------------------------------------------------
 -- Mess
@@ -240,3 +247,19 @@ create table alerts (
 );
 create index on alerts(cluster_id);
 create index on alerts(state);
+
+-- --------------------------------------------------------------------------
+-- In-app notifications
+-- --------------------------------------------------------------------------
+
+create table notifications (
+  id          uuid primary key default gen_random_uuid(),
+  student_id  uuid references students(id) on delete cascade,
+  alert_id    uuid references alerts(id) on delete cascade,
+  title       text not null,
+  body        text not null,
+  severity    risk_level not null default 'watch',
+  read_at     timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index on notifications(student_id, created_at desc);

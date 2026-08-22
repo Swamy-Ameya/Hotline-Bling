@@ -1,19 +1,38 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Radar } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Radar, LogIn, LogOut, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { Session } from '@/lib/auth/session';
 
 const NAV = [
   { href: '/radar', label: 'Dashboard' },
   { href: '/doctor', label: 'Health centre' },
-  { href: '/report', label: 'Report symptoms' },
+  { href: '/app', label: 'Student App' },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.session) setSession(data.session);
+      })
+      .catch(() => {});
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setSession(null);
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <div className="neu-page min-h-screen">
@@ -28,24 +47,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </Link>
 
-          <nav className="flex items-center gap-1.5">
+          <nav className="flex items-center gap-2">
             {NAV.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href + '/'));
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'rounded-xl px-3.5 py-2 text-sm font-medium transition-all',
+                    'rounded-xl px-3.5 py-2 text-sm font-medium transition-all flex items-center gap-1.5',
                     active
                       ? 'neu-inset-sm text-slate-800'
                       : 'text-slate-500 hover:text-slate-800',
                   )}
                 >
+                  {item.href === '/app' && <Smartphone className="size-3.5" />}
                   {item.label}
                 </Link>
               );
             })}
+
+            {session ? (
+              <div className="ml-2 flex items-center gap-2">
+                <span className="rounded-full bg-slate-200/80 px-2.5 py-1 text-xs font-semibold text-slate-700 capitalize">
+                  {session.name.split(' ')[0]} ({session.role})
+                </span>
+                <button
+                  onClick={handleLogout}
+                  title="Sign out"
+                  className="rounded-xl neu-raised-sm p-2 text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  <LogOut className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="ml-2 inline-flex items-center gap-1.5 rounded-xl neu-raised-sm px-3.5 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900"
+              >
+                <LogIn className="size-3.5" />
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
       </header>

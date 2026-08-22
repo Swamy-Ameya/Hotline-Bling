@@ -13,12 +13,15 @@
 
 import { BLOCKS, MESSES, blockById, blockCapacity } from '@/lib/domain/campus';
 import { getMockDb, mutateDb } from '@/lib/db/mock';
+import { poolFor } from '@/lib/domain/pools';
 import type {
   AlertRow,
   CaseView,
   ClusterRow,
   ConsultationRow,
   MessMealRow,
+  NotificationRow,
+  PoolId,
   SelfReportRow,
   StaffRow,
   StudentRow,
@@ -48,6 +51,12 @@ export function findStudent(query: string): StudentRow | undefined {
   );
 }
 
+export function findStudentByExactRegistration(reg: string): StudentRow | undefined {
+  const q = reg.trim().toLowerCase();
+  if (!q) return undefined;
+  return getMockDb().students.find((s) => s.registration.toLowerCase() === q || s.id.toLowerCase() === q);
+}
+
 export function searchStudents(query: string, limit = 8): StudentRow[] {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
@@ -73,6 +82,15 @@ export function listStaff(): StaffRow[] {
 
 export function getDoctors(): StaffRow[] {
   return getMockDb().staff.filter((s) => s.role === 'doctor');
+}
+
+export function getStaffById(id: string): StaffRow | undefined {
+  return getMockDb().staff.find((s) => s.id === id);
+}
+
+export function findStaffByEmail(email: string): StaffRow | undefined {
+  const q = email.trim().toLowerCase();
+  return getMockDb().staff.find((s) => s.email.toLowerCase() === q);
 }
 
 /* ----------------------------------------------------------------- cases -- */
@@ -104,6 +122,7 @@ export function getCases(windowHours = 72): CaseView[] {
       severity: c.severity,
       diagnosis: c.diagnosis,
       prompted: false,
+      pool: c.pool ?? poolFor(c.symptoms),
     });
   }
 
@@ -126,6 +145,7 @@ export function getCases(windowHours = 72): CaseView[] {
       severity: r.severity,
       diagnosis: null,
       prompted: r.promptedByAlertId !== null,
+      pool: r.pool ?? poolFor(r.symptoms),
     });
   }
 
@@ -173,16 +193,27 @@ export function getMessEligibleCount(messId: string): number {
 }
 
 export function getMealAttendees(mealId: string): Set<string> {
+  const db = getMockDb();
+  if (db.attendanceByMeal) {
+    return db.attendanceByMeal.get(mealId) ?? new Set<string>();
+  }
   return new Set(
-    getMockDb()
-      .attendance.filter((a) => a.mealId === mealId)
-      .map((a) => a.studentId),
+    db.attendance.filter((a) => a.mealId === mealId).map((a) => a.studentId),
   );
 }
 
 export function getMealsEatenBy(studentId: string, hours = 72): MessMealRow[] {
   const db = getMockDb();
   const cutoff = db.now.getTime() - hours * 3600_000;
+  if (db.attendanceByStudent) {
+    const records = db.attendanceByStudent.get(studentId) ?? [];
+    const ids = new Set(
+      records
+        .filter((a) => new Date(a.scannedAt).getTime() >= cutoff)
+        .map((a) => a.mealId),
+    );
+    return db.meals.filter((m) => ids.has(m.id));
+  }
   const ids = new Set(
     db.attendance
       .filter((a) => a.studentId === studentId && new Date(a.scannedAt).getTime() >= cutoff)
@@ -243,6 +274,7 @@ export function createSelfReport(input: {
     severity: input.severity,
     recalledMealIds: input.mealIds ?? [],
     promptedByAlertId: prior?.id ?? null,
+    pool: poolFor(input.symptoms),
   };
   mutateDb((d) => d.selfReports.push(row));
   return row;
@@ -271,12 +303,13 @@ export function createConsultation(input: {
     prescription: input.prescription ?? null,
     notes: input.notes ?? null,
     recalledMealIds: input.mealIds ?? [],
+    pool: poolFor(input.symptoms),
   };
   mutateDb((db) => db.consultations.push(row));
   return row;
 }
 
-/* ---------------------------------------------------------------- alerts -- */
+/* ---------------------------------------------------------------- alerts & notifications -- */
 
 export function listAlerts(): AlertRow[] {
   return [...getMockDb().alerts].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
@@ -291,26 +324,46 @@ export function createAlert(input: {
   sentBy?: string;
 }): AlertRow {
   const db = getMockDb();
-  const recipients = db.students.filter(
+  const matchingStudents = db.students.filter(
     (s) =>
       (input.blockId === null || s.blockId === input.blockId) &&
       (input.floor === null || s.floor === input.floor),
-  ).length;
+  );
+
+  const alertId = `alert-${Date.now()}`;
+  const nowStr = new Date().toISOString();
 
   const row: AlertRow = {
-    id: `alert-${Date.now()}`,
+    id: alertId,
     clusterId: input.clusterId,
     state: 'sent',
     blockId: input.blockId,
     floor: input.floor,
     title: input.title,
     body: input.body,
-    createdAt: new Date().toISOString(),
-    sentAt: new Date().toISOString(),
+    createdAt: nowStr,
+    sentAt: nowStr,
     sentBy: input.sentBy ?? 'staff-admin-1',
-    recipients,
+    recipients: matchingStudents.length,
   };
-  mutateDb((d) => d.alerts.push(row));
+
+  // Fan out notification rows to each recipient student
+  const notifs: NotificationRow[] = matchingStudents.map((s, idx) => ({
+    id: `notif-${alertId}-${s.id}-${idx}`,
+    studentId: s.id,
+    alertId,
+    title: input.title,
+    body: input.body,
+    severity: 'watch' as const,
+    readAt: null,
+    createdAt: nowStr,
+  }));
+
+  mutateDb((d) => {
+    d.alerts.push(row);
+    d.notifications.push(...notifs);
+  });
+
   return row;
 }
 
@@ -319,6 +372,49 @@ export function setAlertState(id: string, state: AlertRow['state']) {
     const a = db.alerts.find((x) => x.id === id);
     if (a) a.state = state;
   });
+}
+
+export function getStudentNotifications(studentId: string): NotificationRow[] {
+  const db = getMockDb();
+  return db.notifications
+    .filter((n) => n.studentId === studentId)
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+}
+
+export function markNotificationRead(id: string): void {
+  mutateDb((db) => {
+    const n = db.notifications.find((x) => x.id === id);
+    if (n && !n.readAt) n.readAt = new Date().toISOString();
+  });
+}
+
+export function createDirectNotification(input: {
+  studentId: string;
+  title: string;
+  body: string;
+  severity?: 'normal' | 'watch' | 'elevated' | 'critical';
+  alertId?: string;
+}): NotificationRow {
+  const nowStr = new Date().toISOString();
+  const row: NotificationRow = {
+    id: `notif-direct-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    studentId: input.studentId,
+    alertId: input.alertId ?? 'demo-test-alert',
+    title: input.title,
+    body: input.body,
+    severity: input.severity ?? 'watch',
+    readAt: null,
+    createdAt: nowStr,
+  };
+  mutateDb((db) => db.notifications.push(row));
+  return row;
+}
+
+export function getStudentSelfReports(studentId: string): SelfReportRow[] {
+  const db = getMockDb();
+  return db.selfReports
+    .filter((r) => r.studentId === studentId)
+    .sort((a, b) => +new Date(b.reportedAt) - +new Date(a.reportedAt));
 }
 
 /* -------------------------------------------------------------- rollups --- */
@@ -362,4 +458,4 @@ export function getDayScholarCases(windowHours = 72): number {
 }
 
 export { BLOCKS, MESSES };
-export type { ClusterRow };
+export type { ClusterRow, NotificationRow, PoolId };

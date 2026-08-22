@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAlert, listAlerts, setAlertState } from '@/lib/db';
+import { getMockDb } from '@/lib/db/mock';
+import { sendWebPushNotification } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +47,21 @@ export async function POST(request: Request) {
     body: body.body,
     sentBy: body.sentBy,
   });
+
+  // Fan out push notification to any registered mobile PWA devices in this cohort
+  const matchingStudentIds = getMockDb().students
+    .filter(
+      (s) =>
+        (body.blockId === null || s.blockId === body.blockId) &&
+        (body.floor === null || s.floor === body.floor),
+    )
+    .map((s) => s.id);
+
+  sendWebPushNotification(matchingStudentIds, {
+    title: body.title,
+    body: body.body,
+    url: '/app/alerts',
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, alert });
 }

@@ -13,6 +13,8 @@
  * ============================================================================
  */
 
+import { WEIGHT } from '@/lib/domain/weighting';
+
 export type RiskLevel = 'normal' | 'watch' | 'elevated' | 'critical';
 
 export type Confidence = 'low' | 'medium' | 'high';
@@ -84,8 +86,12 @@ export const SOURCE_META: Record<LikelySource, { label: string; action: string }
 /* ------------------------------------------------------------ inputs ----- */
 
 export interface ClusterSignal {
-  /** Confirmed + self-reported cases in the window. */
+  /** Confirmed + self-reported raw whole-person count. */
   cases: number;
+  /** Raw whole cases count. */
+  rawCases?: number;
+  /** Weighted case total (doctor 1.0, self 0.4). */
+  weightedCases?: number;
   /** What this location normally sees over the same window. */
   usual: number;
   /** How many were seen and recorded by a doctor rather than self-reported. */
@@ -123,11 +129,12 @@ export function assessRisk(s: ClusterSignal): RiskAssessment {
   const source = inferSource(s);
   const confidence = gaugeConfidence(s);
 
+  const rawCount = s.rawCases ?? s.cases;
   const usualRounded = Math.max(1, Math.round(s.usual));
   const comparison =
-    s.cases <= usualRounded
-      ? `${s.cases} report${s.cases === 1 ? '' : 's'}, which is about normal here.`
-      : `${s.cases} reports, where we'd normally expect about ${usualRounded}.`;
+    rawCount <= usualRounded
+      ? `${rawCount} report${rawCount === 1 ? '' : 's'}, which is about normal here.`
+      : `${rawCount} reports, where we'd normally expect about ${usualRounded}.`;
 
   return {
     level,
@@ -140,24 +147,23 @@ export function assessRisk(s: ClusterSignal): RiskAssessment {
 }
 
 function classifyLevel(s: ClusterSignal): RiskLevel {
-  const excess = s.cases - s.usual;
+  const selfCount = Math.max(0, s.cases - s.doctorConfirmed);
+  const weighted = s.weightedCases ?? (s.doctorConfirmed * WEIGHT.doctor + selfCount * WEIGHT.self);
+  const excess = weighted - s.usual;
 
   // Nothing meaningfully above the usual background.
-  //
-  // The floor of four is deliberate. On a campus of ~4,800 a block will collect
-  // two or three unrelated stomach upsets in a normal week purely by chance,
-  // and flagging those trains everyone to ignore the dashboard.
-  if (s.cases < 4 || excess <= s.usual * 0.75) return 'normal';
+  // The floor of 2.5 weighted cases is deliberate (prevents 2-3 random complaints from triggering).
+  if (weighted < 2.5 || excess <= s.usual * 0.75) return 'normal';
 
   // A few extra reports, but not enough to be sure it isn't a coincidence.
-  if (s.cases < 6 || excess < s.usual * 1.5) return 'watch';
+  if (weighted < 4.0 || excess < s.usual * 1.5) return 'watch';
 
   const severe = s.avgSeverity >= 4;
   const wide = s.blocksAffected > 1 || s.floorsAffected >= 3;
-  const big = s.cases >= 10 || excess >= s.usual * 3;
+  const big = weighted >= 7.0 || excess >= s.usual * 3;
 
   if (big && (severe || wide || s.doctorConfirmed >= 3)) return 'critical';
-  if (s.cases >= 5) return 'elevated';
+  if (weighted >= 4.0) return 'elevated';
   return 'watch';
 }
 
@@ -211,6 +217,7 @@ function buildSummary(s: ClusterSignal, level: RiskLevel, source: LikelySource):
     return 'Nothing unusual here right now.';
   }
 
+  const rawCount = s.rawCases ?? s.cases;
   const where =
     s.blocksAffected > 1
       ? `${s.blocksAffected} blocks`
@@ -233,7 +240,7 @@ function buildSummary(s: ClusterSignal, level: RiskLevel, source: LikelySource):
     unclear: 'though it is too early to say what is behind it',
   }[source];
 
-  return `${s.cases} students across ${where} have reported symptoms. ${timing}, ${cause}.`;
+  return `${rawCount} students across ${where} have reported symptoms. ${timing}, ${cause}.`;
 }
 
 /* ---------------------------------------------------------------- misc --- */

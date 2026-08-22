@@ -23,11 +23,14 @@ import {
   messForBlock,
   roomNumber,
 } from '@/lib/domain/campus';
+import { makeRegistration } from '@/lib/domain/registration';
+import { poolFor } from '@/lib/domain/pools';
 import type {
   AlertRow,
   ConsultationRow,
   MealAttendanceRow,
   MessMealRow,
+  NotificationRow,
   SelfReportRow,
   StaffRow,
   StudentRow,
@@ -121,10 +124,13 @@ export interface MockDatabase {
   staff: StaffRow[];
   meals: MessMealRow[];
   attendance: MealAttendanceRow[];
+  attendanceByMeal: Map<string, Set<string>>;
+  attendanceByStudent: Map<string, { mealId: string; scannedAt: string }[]>;
   consultations: ConsultationRow[];
   selfReports: SelfReportRow[];
   waterTests: WaterTestRow[];
   alerts: AlertRow[];
+  notifications: NotificationRow[];
   now: Date;
 }
 
@@ -150,7 +156,7 @@ function seed(): MockDatabase {
     { id: 'staff-doc-1', name: 'Dr. Meenakshi Rao', role: 'doctor', email: 'health.centre@muj.ac.in', blockId: null },
     { id: 'staff-doc-2', name: 'Dr. Ashok Sinha', role: 'doctor', email: 'ashok.sinha@muj.ac.in', blockId: null },
     { id: 'staff-admin-1', name: 'Chief Warden Office', role: 'admin', email: 'chiefwarden@muj.ac.in', blockId: null },
-    ...BLOCKS.map((b, i) => ({
+    ...BLOCKS.map((b) => ({
       id: `staff-warden-${b.name}`,
       name: `Warden — ${b.name}`,
       role: 'warden' as const,
@@ -170,9 +176,10 @@ function seed(): MockDatabase {
       for (let r = 0; r < block.roomsPerFloor; r++) {
         for (let s = 0; s < block.studentsPerRoom; s++) {
           regSeq++;
+          const prog = rng() < 0.8 ? '0205' : (['0206', '0210', '0215'][Math.floor(rng() * 3)]);
           students.push({
             id: `stu-${regSeq}`,
-            registration: `24FE${String(10000 + regSeq)}`,
+            registration: makeRegistration(regSeq, prog),
             name: `${names[Math.floor(rng() * names.length)]} ${LAST[Math.floor(rng() * LAST.length)]}`,
             email: `student${regSeq}@muj.ac.in`,
             phone: `9${Math.floor(100000000 + rng() * 899999999)}`,
@@ -192,9 +199,10 @@ function seed(): MockDatabase {
     regSeq++;
     const male = rng() < 0.55;
     const names = male ? FIRST_M : FIRST_F;
+    const prog = rng() < 0.8 ? '0205' : (['0206', '0210', '0215'][Math.floor(rng() * 3)]);
     students.push({
       id: `stu-${regSeq}`,
-      registration: `24FE${String(10000 + regSeq)}`,
+      registration: makeRegistration(regSeq, prog),
       name: `${names[Math.floor(rng() * names.length)]} ${LAST[Math.floor(rng() * LAST.length)]}`,
       email: `student${regSeq}@muj.ac.in`,
       phone: `9${Math.floor(100000000 + rng() * 899999999)}`,
@@ -233,6 +241,9 @@ function seed(): MockDatabase {
 
   /* ---- meal attendance (only recent days; that's all detection needs) ---- */
   const attendance: MealAttendanceRow[] = [];
+  const attendanceByMeal = new Map<string, Set<string>>();
+  const attendanceByStudent = new Map<string, { mealId: string; scannedAt: string }[]>();
+
   const recentMeals = meals.filter(
     (m) => now.getTime() - new Date(m.opensAt).getTime() < 5 * 86400_000,
   );
@@ -247,26 +258,46 @@ function seed(): MockDatabase {
       attSeq++;
       const open = new Date(meal.opensAt).getTime();
       const close = new Date(meal.closesAt).getTime();
+      const scannedAt = iso(new Date(open + rng() * (close - open)));
+
       attendance.push({
         id: `att-${attSeq}`,
         mealId: meal.id,
         studentId: s.id,
-        scannedAt: iso(new Date(open + rng() * (close - open))),
+        scannedAt,
       });
+
+      // Populate fast indexes
+      let mealSet = attendanceByMeal.get(meal.id);
+      if (!mealSet) {
+        mealSet = new Set();
+        attendanceByMeal.set(meal.id, mealSet);
+      }
+      mealSet.add(s.id);
+
+      let stuList = attendanceByStudent.get(s.id);
+      if (!stuList) {
+        stuList = [];
+        attendanceByStudent.set(s.id, stuList);
+      }
+      stuList.push({ mealId: meal.id, scannedAt });
     }
   }
 
-  const ateMeal = (mealId: string) =>
-    new Set(attendance.filter((a) => a.mealId === mealId).map((a) => a.studentId));
+  const ateMeal = (mealId: string) => attendanceByMeal.get(mealId) ?? new Set<string>();
 
-  const mealsBefore = (studentId: string, onset: Date) =>
-    attendance
-      .filter((a) => {
-        if (a.studentId !== studentId) return false;
-        const dt = onset.getTime() - new Date(a.scannedAt).getTime();
-        return dt > 0 && dt < 72 * 3600_000;
-      })
-      .map((a) => a.mealId);
+  const mealsBefore = (studentId: string, onset: Date) => {
+    const list = attendanceByStudent.get(studentId) ?? [];
+    const onsetTime = onset.getTime();
+    const out: string[] = [];
+    for (const item of list) {
+      const dt = onsetTime - new Date(item.scannedAt).getTime();
+      if (dt > 0 && dt < 72 * 3600_000) {
+        out.push(item.mealId);
+      }
+    }
+    return out;
+  };
 
   /* ---- ordinary background illness ---- */
   const consultations: ConsultationRow[] = [];
@@ -283,6 +314,7 @@ function seed(): MockDatabase {
     diagnosis?: string,
   ) => {
     const recalled = mealsBefore(student.id, onset);
+    const pool = poolFor(symptoms);
     if (viaDoctor) {
       cSeq++;
       consultations.push({
@@ -291,8 +323,6 @@ function seed(): MockDatabase {
         doctorId: rng() < 0.6 ? 'staff-doc-1' : 'staff-doc-2',
         symptoms,
         onsetAt: iso(onset),
-        // Students usually turn up several hours to a day after symptoms begin.
-        // That lag is exactly why a clinic-only system notices late.
         seenAt: iso(new Date(onset.getTime() + (4 + rng() * 22) * 3600_000)),
         severity,
         diagnosis: diagnosis ?? 'Acute gastroenteritis',
@@ -302,6 +332,7 @@ function seed(): MockDatabase {
             : 'ORS sachets, light diet, review in 24h',
         notes: severity >= 4 ? 'Advised rest. Review if no improvement in 24h.' : null,
         recalledMealIds: recalled,
+        pool,
       });
     } else {
       sSeq++;
@@ -314,6 +345,7 @@ function seed(): MockDatabase {
         severity,
         recalledMealIds: recalled,
         promptedByAlertId: null,
+        pool,
       });
     }
   };
@@ -328,11 +360,7 @@ function seed(): MockDatabase {
     }
   }
 
-  /* ---- what is happening right now ----------------------------------------
-     A tank problem in one boys' block, developing over the last two days.
-     Symptoms are waterborne in character, onset is spread out rather than
-     sharp, and it is confined to one block — which is what points at that
-     block's own overhead tank rather than the mess everyone shares.        */
+  /* ---- what is happening right now: B4 tank issue ---- */
   const affected = BLOCKS.find((b) => b.name === 'B4')!;
   const inBlock = students.filter((s) => s.blockId === affected.id);
   const picked = shuffle(rng, inBlock).slice(0, 14);
@@ -344,7 +372,7 @@ function seed(): MockDatabase {
       onset,
       WATERBORNE[Math.floor(rng() * WATERBORNE.length)],
       2 + Math.floor(rng() * 3),
-      i < 8, // most of these did reach the health centre
+      i < 8,
       'Acute gastroenteritis — suspected waterborne',
     );
   });
@@ -399,10 +427,13 @@ function seed(): MockDatabase {
     staff,
     meals,
     attendance,
+    attendanceByMeal,
+    attendanceByStudent,
     consultations,
     selfReports,
     waterTests,
     alerts: [],
+    notifications: [],
     now,
   };
 }
@@ -411,7 +442,7 @@ function shuffle<T>(rng: () => number, xs: readonly T[]): T[] {
   const a = xs.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [a[j], a[i]] = [a[i], a[j]];
   }
   return a;
 }

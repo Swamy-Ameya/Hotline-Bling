@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CheckCircle2,
   ClipboardList,
@@ -9,6 +9,7 @@ import {
   Stethoscope,
   UtensilsCrossed,
   User,
+  Sparkles,
 } from 'lucide-react';
 import { NeuButton, SectionTitle, Surface, timeAgo } from '@/components/neu';
 import { SYMPTOM_LABEL, type Symptom } from '@/lib/db/types';
@@ -192,7 +193,7 @@ export function DoctorClient({ recentCount }: { recentCount: number }) {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold text-slate-800">{student.name}</div>
                   <div className="text-xs text-slate-500">
-                    {student.registration}
+                    <span className="font-mono">{student.registration}</span>
                     {student.blockId
                       ? ` · Block ${student.blockId.replace('block-', '')}, Floor ${student.floor}, Room ${student.room}`
                       : ' · Day scholar'}
@@ -209,10 +210,21 @@ export function DoctorClient({ recentCount }: { recentCount: number }) {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Start typing a registration number or name…"
-                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    placeholder="Start typing a registration (e.g. 2502050001) or name…"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 font-mono"
                   />
                 </div>
+
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setQuery('2502050001')}
+                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    <Sparkles className="size-3" /> Quick lookup: 2502050001 (Ishaan Reddy)
+                  </button>
+                </div>
+
                 {hits.length > 0 && (
                   <Surface className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto p-2">
                     {hits.map((h) => (
@@ -224,7 +236,7 @@ export function DoctorClient({ recentCount }: { recentCount: number }) {
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium text-slate-800">{h.name}</div>
                           <div className="text-xs text-slate-500">
-                            {h.registration}
+                            <span className="font-mono font-semibold">{h.registration}</span>
                             {h.blockId
                               ? ` · ${h.blockId.replace('block-', '')} ${h.room}`
                               : ' · Day scholar'}
@@ -250,7 +262,7 @@ export function DoctorClient({ recentCount }: { recentCount: number }) {
                     onClick={() => toggle(s)}
                     className={cn(
                       'rounded-xl px-3.5 py-2 text-sm font-medium transition-all',
-                      on ? 'neu-inset-sm text-slate-900' : 'neu-raised-sm text-slate-600',
+                      on ? 'neu-inset-sm text-slate-900 bg-white font-semibold' : 'neu-raised-sm text-slate-600',
                     )}
                   >
                     {SYMPTOM_LABEL[s]}
@@ -258,150 +270,175 @@ export function DoctorClient({ recentCount }: { recentCount: number }) {
                 );
               })}
             </div>
+          </Surface>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          {/* ── onset + severity ── */}
+          <Surface className="p-6 animate-rise stagger-3">
+            <SectionTitle hint="When did symptoms first appear?">Onset & severity</SectionTitle>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  When did it start?
+                  Approximate onset
                 </label>
-                <input
-                  type="datetime-local"
-                  value={onset}
-                  onChange={(e) => setOnset(e.target.value)}
-                  className="mt-2 w-full rounded-xl neu-inset-sm px-4 py-2.5 text-sm text-slate-800 outline-none"
-                />
+                <div className="mt-2 rounded-xl neu-inset-sm px-4 py-3">
+                  <input
+                    type="datetime-local"
+                    value={onset}
+                    onChange={(e) => setOnset(e.target.value)}
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none"
+                  />
+                </div>
               </div>
+
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  How unwell are they?
+                  Severity (1–5)
                 </label>
-                <div className="mt-2 flex gap-1.5">
-                  {[1, 2, 3, 4, 5].map((n) => (
+                <div className="mt-2 flex gap-2">
+                  {[1, 2, 3, 4, 5].map((lvl) => (
                     <button
-                      key={n}
-                      onClick={() => setSeverity(n)}
+                      key={lvl}
+                      type="button"
+                      onClick={() => setSeverity(lvl)}
                       className={cn(
-                        'h-10 flex-1 rounded-xl text-sm font-semibold transition-all',
-                        severity === n
-                          ? n >= 4
-                            ? 'neu-inset-sm text-red-600'
-                            : 'neu-inset-sm text-slate-900'
+                        'flex-1 rounded-xl py-3 text-sm font-bold transition-all',
+                        severity === lvl
+                          ? 'neu-inset-sm text-slate-900 bg-white'
                           : 'neu-raised-sm text-slate-500',
                       )}
                     >
-                      {n}
+                      {lvl}
                     </button>
                   ))}
-                </div>
-                <div className="mt-1.5 flex justify-between text-[11px] text-slate-400">
-                  <span>Mild</span>
-                  <span>Severe</span>
                 </div>
               </div>
             </div>
           </Surface>
 
-          {/* ── prescription ── */}
-          <Surface className="p-6 animate-rise stagger-3">
-            <SectionTitle hint="Optional, but it helps the record">Assessment</SectionTitle>
+          {/* ── clinical notes ── */}
+          <Surface className="p-6 animate-rise stagger-4">
+            <SectionTitle hint="Optional, kept in student's record">Clinical notes</SectionTitle>
 
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Diagnosis
-            </label>
-            <input
-              value={diagnosis}
-              onChange={(e) => setDiagnosis(e.target.value)}
-              placeholder="e.g. Acute gastroenteritis"
-              className="mt-2 w-full rounded-xl neu-inset-sm px-4 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
-            />
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {COMMON_DIAGNOSES.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDiagnosis(d)}
-                  className="rounded-lg px-2.5 py-1 text-xs font-medium text-slate-500 neu-raised-sm transition-colors hover:text-slate-800"
-                >
-                  {d}
-                </button>
-              ))}
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Working diagnosis
+                </label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {COMMON_DIAGNOSES.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDiagnosis(d)}
+                      className={cn(
+                        'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
+                        diagnosis === d
+                          ? 'neu-inset-sm text-slate-900 bg-white font-semibold'
+                          : 'neu-raised-sm text-slate-600',
+                      )}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 rounded-xl neu-inset-sm px-4 py-2.5">
+                  <input
+                    value={diagnosis}
+                    onChange={(e) => setDiagnosis(e.target.value)}
+                    placeholder="Or type a custom diagnosis…"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Prescription / advice given
+                </label>
+                <div className="mt-2 rounded-xl neu-inset-sm px-4 py-2.5">
+                  <input
+                    value={prescription}
+                    onChange={(e) => setPrescription(e.target.value)}
+                    placeholder="e.g. ORS sachets, Metronidazole 400mg TDS x3d, light diet"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Doctor notes
+                </label>
+                <div className="mt-2 rounded-xl neu-inset-sm px-4 py-2.5">
+                  <textarea
+                    rows={2}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Rest advised, review if no improvement in 24 hours…"
+                    className="w-full resize-none bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
             </div>
-
-            <label className="mt-5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Prescription
-            </label>
-            <textarea
-              value={prescription}
-              onChange={(e) => setPrescription(e.target.value)}
-              rows={2}
-              placeholder="e.g. ORS sachets 6-hourly, light diet, review in 24h"
-              className="mt-2 w-full resize-none rounded-xl neu-inset-sm px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
-            />
-
-            <label className="mt-5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Notes
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Anything else worth recording"
-              className="mt-2 w-full resize-none rounded-xl neu-inset-sm px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
-            />
           </Surface>
 
-          <NeuButton
-            variant="primary"
-            disabled={!canSave}
-            onClick={save}
-            className="flex w-full items-center justify-center gap-2 py-3.5 text-base"
-          >
-            {saving ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}
-            {saving ? 'Saving…' : 'Save consultation'}
-          </NeuButton>
+          {/* ── save CTA ── */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-slate-400">
+              {canSave ? 'Ready to save.' : 'Select a student and at least one symptom to save.'}
+            </span>
+            <NeuButton
+              variant="primary"
+              disabled={!canSave}
+              onClick={save}
+              className="flex items-center gap-2 px-6 py-3"
+            >
+              {saving && <Loader2 className="size-4 animate-spin" />}
+              {saving ? 'Saving…' : 'Save consultation'}
+            </NeuButton>
+          </div>
         </div>
 
-        {/* ── side: what we already know about this student ── */}
-        <div className="space-y-5">
-          <Surface className="p-6 animate-rise stagger-4">
-            <SectionTitle hint="Pulled from mess card scans">Recent meals</SectionTitle>
+        {/* ── side: mess history ── */}
+        <div>
+          <Surface className="p-6 animate-rise stagger-2">
+            <div className="mb-4 flex items-center gap-2">
+              <UtensilsCrossed className="size-4 text-slate-400" />
+              <h2 className="text-base font-bold text-slate-800">Recent mess meals</h2>
+            </div>
+
             {!student ? (
-              <p className="text-sm leading-relaxed text-slate-500">
-                Pick a student and their last three days of mess visits will appear here
-                automatically.
+              <p className="text-xs leading-relaxed text-slate-400">
+                Look up a student to see the meals they collected in the last 72 hours.
               </p>
             ) : meals.length === 0 ? (
-              <p className="text-sm leading-relaxed text-slate-500">
-                No mess scans in the last three days. They may have been eating outside campus.
+              <p className="text-xs leading-relaxed text-slate-400">
+                No mess card scans recorded in the last 72 hours for this student.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {meals.slice(0, 8).map((m) => (
-                  <li key={m.id}>
-                    <Surface inset small className="px-3.5 py-2.5">
-                      <div className="flex items-center gap-2 text-xs font-semibold capitalize text-slate-700">
-                        <UtensilsCrossed className="size-3.5 text-slate-400" />
-                        {m.mealType}
-                        <span className="ml-auto font-normal text-slate-400">
-                          {timeAgo(m.opensAt)}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                        {m.menuItems.join(' · ')}
-                      </div>
-                    </Surface>
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">
+                  {meals.length} meal{meals.length === 1 ? '' : 's'} linked automatically from card scans:
+                </p>
+                <ul className="space-y-2">
+                  {meals.map((m) => (
+                    <li key={m.id}>
+                      <Surface inset small className="px-3.5 py-2.5">
+                        <div className="flex items-center justify-between text-xs font-semibold capitalize text-slate-700">
+                          <span>{m.mealType}</span>
+                          <span className="text-[11px] font-normal text-slate-400">
+                            {timeAgo(m.opensAt)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">
+                          {m.menuItems.join(' · ')}
+                        </p>
+                      </Surface>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
-          </Surface>
-
-          <Surface inset className="p-5 animate-rise stagger-5">
-            <p className="text-xs leading-relaxed text-slate-500">
-              What you record here is what the dashboard trusts most. A student tapping a form on
-              their phone counts for something, but a clinician who actually examined the patient
-              counts for more — and that difference is what stops a handful of self-reports from
-              triggering a campus-wide alarm.
-            </p>
           </Surface>
         </div>
       </div>

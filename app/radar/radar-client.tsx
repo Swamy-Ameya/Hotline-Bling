@@ -11,8 +11,11 @@ import {
   Droplets,
   MapPin,
   Megaphone,
+  Smartphone,
   Stethoscope,
   UtensilsCrossed,
+  Layers,
+  Settings,
 } from 'lucide-react';
 import {
   ConfidencePill,
@@ -25,9 +28,11 @@ import {
   timeAgo,
 } from '@/components/neu';
 import { CampusHeatmap, type HeatBlock } from '@/components/radar/campus-heatmap';
+import { CampusSatelliteMap } from '@/components/radar/campus-satellite-map';
 import { SOURCE_META } from '@/lib/domain/risk';
 import type { SituationReport } from '@/lib/domain/surveillance';
 import { SYMPTOM_LABEL } from '@/lib/db/types';
+import { QRCodeSVG } from '@/components/qr-code';
 
 export function RadarClient({
   report,
@@ -39,6 +44,8 @@ export function RadarClient({
   const [selected, setSelected] = useState<string | null>(report.hotspots[0]?.blockId ?? null);
   const [sending, setSending] = useState(false);
   const [sentFor, setSentFor] = useState<string[]>([]);
+  const [showQR, setShowQR] = useState(false);
+  const [mapView, setMapView] = useState<'isometric' | 'satellite'>('isometric');
 
   const active = useMemo(
     () => report.hotspots.find((h) => h.blockId === selected) ?? report.hotspots[0] ?? null,
@@ -100,8 +107,15 @@ export function RadarClient({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/report">
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => setShowQR(!showQR)}
+              className="rounded-xl neu-raised-sm px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5 transition-all"
+            >
+              <Smartphone className="size-4 text-indigo-600" />
+              {showQR ? 'Hide Mobile QR' : 'Judge Mobile Scan'}
+            </button>
+            <Link href="/app/report">
               <NeuButton>Report symptoms</NeuButton>
             </Link>
             <Link href="/doctor">
@@ -112,6 +126,21 @@ export function RadarClient({
             </Link>
           </div>
         </div>
+
+        {showQR && (
+          <div className="mt-6 pt-5 border-t border-slate-200/60 flex flex-wrap items-center gap-6 bg-slate-50/50 p-4 rounded-xl">
+            <QRCodeSVG value="https://outbreak-radar-iota.vercel.app/login" size={110} />
+            <div className="space-y-1">
+              <div className="text-xs font-bold text-slate-800">Scan to test Student PWA on phone</div>
+              <p className="text-xs text-slate-500 max-w-md leading-relaxed">
+                Scan with your phone to open the student mobile view. Log in with Demo Student (`2502050001`), submit symptoms, and when the warden sends an advisory from this dashboard, watch your phone receive the notification.
+              </p>
+              <div className="text-[11px] font-mono text-indigo-600 pt-1">
+                https://outbreak-radar-iota.vercel.app/login
+              </div>
+            </div>
+          </div>
+        )}
       </Surface>
 
       {/* ── stats ─────────────────────────────────────────────────────── */}
@@ -147,20 +176,64 @@ export function RadarClient({
       {/* ── map + detail ──────────────────────────────────────────────── */}
       <div className="mb-6 grid gap-5 lg:grid-cols-[1.55fr_1fr]">
         <Surface className="overflow-hidden p-2 animate-rise stagger-2">
-          <div className="flex items-center justify-between px-4 pt-3">
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <MapPin className="size-4 text-slate-400" />
-              Campus heat map
+              Campus Map View
             </div>
-            <span className="text-xs text-slate-400">Height = students · colour = illness</span>
+
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-xl neu-inset p-1 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setMapView('isometric')}
+                  className={`rounded-lg px-2.5 py-1 transition-all ${
+                    mapView === 'isometric'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Isometric 3D
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapView('satellite')}
+                  className={`rounded-lg px-2.5 py-1 transition-all ${
+                    mapView === 'satellite'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Esri Satellite
+                </button>
+              </div>
+
+              <Link
+                href="/admin/map"
+                title="Calibrate Placement Coordinates"
+                className="rounded-xl neu-raised-sm p-2 text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                <Settings className="size-3.5" />
+              </Link>
+            </div>
           </div>
-          <CampusHeatmap
-            blocks={heatBlocks}
-            hotspots={report.hotspots}
-            selectedId={selected}
-            onSelect={setSelected}
-            className="h-[440px]"
-          />
+
+          {mapView === 'isometric' ? (
+            <CampusHeatmap
+              blocks={heatBlocks}
+              hotspots={report.hotspots}
+              selectedId={selected}
+              onSelect={setSelected}
+              className="h-[440px]"
+            />
+          ) : (
+            <CampusSatelliteMap
+              hotspots={report.hotspots}
+              selectedId={selected}
+              onSelect={setSelected}
+              className="h-[440px]"
+            />
+          )}
         </Surface>
 
         <div className="animate-rise stagger-3">

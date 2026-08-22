@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, HeartPulse, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, HeartPulse, Loader2, Search, Sparkles } from 'lucide-react';
 import { NeuButton, Surface } from '@/components/neu';
 import { SYMPTOM_LABEL, type Symptom } from '@/lib/db/types';
 import { cn } from '@/lib/utils';
@@ -181,10 +181,24 @@ export function ReportClient() {
                     autoFocus
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Your registration number"
-                    className="w-full bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400"
+                    placeholder="e.g. 2502050001 or student name"
+                    className="w-full bg-transparent text-base text-slate-800 outline-none placeholder:text-slate-400 font-mono"
                   />
                 </div>
+
+                <div className="mt-2.5 flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setQuery('2502050001')}
+                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    <Sparkles className="size-3" /> Use demo: 2502050001
+                  </button>
+                  <Link href="/login" className="text-slate-400 hover:text-slate-700">
+                    Already signed in? Open /app →
+                  </Link>
+                </div>
+
                 {hits.length > 0 && (
                   <Surface className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto p-2">
                     {hits.map((h) => (
@@ -197,7 +211,7 @@ export function ReportClient() {
                         className="flex w-full flex-col items-start rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-white/70"
                       >
                         <span className="text-sm font-medium text-slate-800">{h.name}</span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-500 font-mono">
                           {h.registration}
                           {h.blockId ? ` · ${h.blockId.replace('block-', '')} ${h.room}` : ''}
                         </span>
@@ -229,8 +243,8 @@ export function ReportClient() {
                     key={s}
                     onClick={() => toggle(s)}
                     className={cn(
-                      'rounded-xl px-4 py-3.5 text-sm font-medium transition-all',
-                      on ? 'neu-inset-sm text-slate-900' : 'neu-raised-sm text-slate-600',
+                      'rounded-xl px-4 py-3.5 text-sm font-medium transition-all min-h-[44px]',
+                      on ? 'neu-inset-sm text-slate-900 font-bold bg-white' : 'neu-raised-sm text-slate-600',
                     )}
                   >
                     {SYMPTOM_LABEL[s]}
@@ -260,9 +274,9 @@ export function ReportClient() {
                   key={o.hours}
                   onClick={() => setWhenHours(o.hours)}
                   className={cn(
-                    'w-full rounded-xl px-4 py-3.5 text-left text-sm font-medium transition-all',
+                    'w-full rounded-xl px-4 py-3.5 text-left text-sm font-medium transition-all min-h-[44px]',
                     whenHours === o.hours
-                      ? 'neu-inset-sm text-slate-900'
+                      ? 'neu-inset-sm text-slate-900 font-bold bg-white'
                       : 'neu-raised-sm text-slate-600',
                   )}
                 >
@@ -286,11 +300,11 @@ export function ReportClient() {
                     key={o.n}
                     onClick={() => setSeverity(o.n)}
                     className={cn(
-                      'flex-1 rounded-xl px-2 py-3 text-xs font-semibold transition-all',
+                      'flex-1 rounded-xl px-2 py-3 text-xs font-semibold transition-all min-h-[44px]',
                       severity === o.n
                         ? o.n >= 3
-                          ? 'neu-inset-sm text-red-600'
-                          : 'neu-inset-sm text-slate-900'
+                          ? 'neu-inset-sm text-red-600 font-bold bg-white'
+                          : 'neu-inset-sm text-slate-900 font-bold bg-white'
                         : 'neu-raised-sm text-slate-500',
                     )}
                   >

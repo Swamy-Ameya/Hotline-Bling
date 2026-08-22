@@ -11,6 +11,7 @@ import type { Confidence, LikelySource, RiskLevel } from '@/lib/domain/risk';
 export type StaffRole = 'doctor' | 'warden' | 'admin';
 export type MealType = 'breakfast' | 'lunch' | 'snacks' | 'dinner';
 export type AlertState = 'draft' | 'sent' | 'resolved' | 'dismissed';
+export type PoolId = 'gastro' | 'respiratory' | 'fever' | 'skin' | 'other';
 
 export type Symptom =
   | 'vomiting'
@@ -20,7 +21,14 @@ export type Symptom =
   | 'fever'
   | 'headache'
   | 'weakness'
-  | 'dehydration';
+  | 'dehydration'
+  | 'cough'
+  | 'sore_throat'
+  | 'body_ache'
+  | 'rash'
+  | 'itching'
+  | 'breathlessness'
+  | 'runny_nose';
 
 export const SYMPTOM_LABEL: Record<Symptom, string> = {
   vomiting: 'Vomiting',
@@ -31,6 +39,13 @@ export const SYMPTOM_LABEL: Record<Symptom, string> = {
   headache: 'Headache',
   weakness: 'Weakness',
   dehydration: 'Dehydration',
+  cough: 'Cough',
+  sore_throat: 'Sore throat',
+  body_ache: 'Body ache',
+  rash: 'Skin rash',
+  itching: 'Itching',
+  breathlessness: 'Breathlessness',
+  runny_nose: 'Runny nose',
 };
 
 export interface StudentRow {
@@ -66,6 +81,7 @@ export interface ConsultationRow {
   prescription: string | null;
   notes: string | null;
   recalledMealIds: string[];
+  pool?: PoolId;
 }
 
 export interface SelfReportRow {
@@ -77,6 +93,7 @@ export interface SelfReportRow {
   severity: number;
   recalledMealIds: string[];
   promptedByAlertId: string | null;
+  pool?: PoolId;
 }
 
 export interface MessMealRow {
@@ -143,6 +160,17 @@ export interface AlertRow {
   recipients: number;
 }
 
+export interface NotificationRow {
+  id: string;
+  studentId: string;
+  alertId: string;
+  title: string;
+  body: string;
+  severity: RiskLevel;
+  readAt: string | null;
+  createdAt: string;
+}
+
 /** A case, joined and ready to render — either channel. */
 export interface CaseView {
   id: string;
@@ -159,4 +187,5 @@ export interface CaseView {
   severity: number;
   diagnosis: string | null;
   prompted: boolean;
+  pool?: PoolId;
 }

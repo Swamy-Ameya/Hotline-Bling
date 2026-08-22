@@ -5,6 +5,7 @@ import {
   Droplets,
   HeartPulse,
   MapPin,
+  Smartphone,
   Stethoscope,
   UtensilsCrossed,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ import { NeuButton, RiskBadge, Surface } from '@/components/neu';
 import { buildSituationReport } from '@/lib/domain/surveillance';
 import { countStudents } from '@/lib/db';
 import { BLOCKS } from '@/lib/domain/campus';
+import { QRCodeSVG } from '@/components/qr-code';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,8 +78,8 @@ export default async function HomePage() {
                   <ArrowRight className="size-4" />
                 </NeuButton>
               </Link>
-              <Link href="/report">
-                <NeuButton className="px-6 py-3 text-base">I’m not feeling well</NeuButton>
+              <Link href="/login">
+                <NeuButton className="px-6 py-3 text-base">Sign in (Student / Staff)</NeuButton>
               </Link>
             </div>
 
@@ -138,6 +140,30 @@ export default async function HomePage() {
             </Link>
           </Surface>
         </div>
+      </section>
+
+      {/* ── Judge Scan-In Section ── */}
+      <section className="mx-auto max-w-7xl px-6 py-6">
+        <Surface className="p-8 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+          <div className="grid md:grid-cols-[1fr_auto] gap-6 items-center">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-indigo-300">
+                <Smartphone className="size-3.5" /> Mobile PWA Experience
+              </div>
+              <h2 className="text-2xl font-bold">Scan to open on your phone</h2>
+              <p className="text-sm text-slate-300 max-w-xl leading-relaxed">
+                Scan with your smartphone camera to open the Student PWA. Add to Home Screen, log in as Demo Student in 1 tap, file a self-report, and receive live push alert broadcasts directly to your lock screen.
+              </p>
+              <div className="pt-2 text-xs text-indigo-200 font-mono">
+                Direct URL: https://outbreak-radar-iota.vercel.app/login
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <QRCodeSVG value="https://outbreak-radar-iota.vercel.app/login" size={130} />
+              <span className="text-[11px] font-semibold text-slate-300">Scan to Open /login</span>
+            </div>
+          </div>
+        </Surface>
       </section>
 
       {/* ── how it works ── */}
