@@ -1,5 +1,5 @@
 import React from 'react';
-import { requireRole } from '@/lib/auth/session';
+import { resolveStudentSession } from '@/lib/auth/session';
 import { StudentNavigation } from './student-nav';
 import { StudentHeader } from './student-header';
 import { getStudentNotifications } from '@/lib/db';
@@ -7,8 +7,8 @@ import { getStudentNotifications } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 export default async function StudentAppLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireRole('student', 'doctor', 'warden');
-  const notifications = getStudentNotifications(session.userId);
+  const { session, student } = await resolveStudentSession();
+  const notifications = getStudentNotifications(student.id);
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return (

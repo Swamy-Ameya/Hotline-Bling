@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSelfReport, findStudent, getCases, getMealsEatenBy } from '@/lib/db';
+import { createSelfReport, findStudent, getStudent, getCases, getMealsEatenBy } from '@/lib/db';
 import type { Symptom } from '@/lib/db/types';
 
 export const dynamic = 'force-dynamic';
@@ -14,36 +14,40 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
+  const studentIdentifier = body?.studentId || body?.student;
 
-  if (!body?.student || !body?.symptoms?.length || !body?.onsetAt) {
+  if (!studentIdentifier || !body?.symptoms?.length || !body?.onsetAt) {
     return NextResponse.json(
       { ok: false, error: 'student, symptoms and onsetAt are required' },
       { status: 400 },
     );
   }
 
-  const student = findStudent(String(body.student));
+  const student = getStudent(String(studentIdentifier)) ?? findStudent(String(studentIdentifier));
   if (!student) {
     return NextResponse.json(
-      { ok: false, error: `No student found for "${body.student}"` },
+      { ok: false, error: `No student found for "${studentIdentifier}"` },
       { status: 404 },
     );
   }
 
-  const meals = getMealsEatenBy(student.id, 72).map((m) => m.id);
+  const selectedMealIds = Array.isArray(body.mealIds) && body.mealIds.length > 0
+    ? body.mealIds
+    : getMealsEatenBy(student.id, 72).map((m) => m.id);
 
   const row = createSelfReport({
     studentId: student.id,
     symptoms: body.symptoms as Symptom[],
     onsetAt: body.onsetAt,
     severity: Number(body.severity ?? 2),
-    mealIds: meals,
+    mealIds: selectedMealIds,
   });
 
   return NextResponse.json({
     ok: true,
     id: row.id,
     prompted: row.promptedByAlertId !== null,
+    pool: row.pool,
     student: {
       name: student.name,
       registration: student.registration,

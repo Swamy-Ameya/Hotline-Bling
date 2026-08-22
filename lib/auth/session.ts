@@ -1,5 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { getStudent, findStudent } from '@/lib/db';
+import { getMockDb } from '@/lib/db/mock';
+import type { StudentRow } from '@/lib/db/types';
 
 export type UserRole = 'student' | 'doctor' | 'warden';
 
@@ -60,4 +63,33 @@ export async function requireRole(...roles: UserRole[]): Promise<Session> {
   }
 
   return session;
+}
+
+/**
+ * Resolves the student session for the student app.
+ * If logged in as a student, returns that student.
+ * If logged in as staff or guest, gracefully resolves to Demo Student (2502050001)
+ * so the student experience never crashes with a 404.
+ */
+export async function resolveStudentSession(): Promise<{ session: Session; student: StudentRow }> {
+  const session = await getSession();
+  const db = getMockDb();
+
+  let student = session?.role === 'student' && session.userId ? getStudent(session.userId) : null;
+  if (!student) {
+    student = findStudent('2502050001') ?? db.students[0];
+  }
+
+  const resolvedSession: Session =
+    session && session.role === 'student'
+      ? session
+      : {
+          role: 'student',
+          userId: student.id,
+          name: student.name,
+          identifier: student.registration,
+          blockId: student.blockId,
+        };
+
+  return { session: resolvedSession, student };
 }
