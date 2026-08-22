@@ -180,3 +180,141 @@
     0 2px 6px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEUMORPHIC SURFACE SYSTEM
+
+   Two surfaces only: raised (sits above the page) and inset (pressed into it).
+   The page itself is a very slightly warm off-white, because pure #fff gives
+   a raised shadow nothing to sit on and the whole effect collapses.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --neu-bg: #eef1f6;
+  --neu-surface: #f4f6fa;
+  --neu-light: rgba(255, 255, 255, 0.9);
+  --neu-dark: rgba(163, 177, 198, 0.42);
+  --neu-dark-soft: rgba(163, 177, 198, 0.26);
+}
+
+.neu-page {
+  background: var(--neu-bg);
+  background-image:
+    radial-gradient(at 8% 0%, rgba(255, 255, 255, 0.7) 0px, transparent 55%),
+    radial-gradient(at 92% 100%, rgba(206, 216, 232, 0.5) 0px, transparent 55%);
+  background-attachment: fixed;
+}
+
+.neu-raised {
+  background: var(--neu-surface);
+  box-shadow:
+    6px 6px 14px var(--neu-dark),
+    -6px -6px 14px var(--neu-light);
+}
+
+.neu-raised-sm {
+  background: var(--neu-surface);
+  box-shadow:
+    3px 3px 7px var(--neu-dark-soft),
+    -3px -3px 7px var(--neu-light);
+}
+
+.neu-inset {
+  background: var(--neu-bg);
+  box-shadow:
+    inset 5px 5px 10px var(--neu-dark),
+    inset -5px -5px 10px var(--neu-light);
+}
+
+.neu-inset-sm {
+  background: var(--neu-bg);
+  box-shadow:
+    inset 2px 2px 5px var(--neu-dark-soft),
+    inset -2px -2px 5px var(--neu-light);
+}
+
+/* Press physics: raised surfaces sink when you push them. */
+.neu-press {
+  transition:
+    box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.neu-press:hover {
+  box-shadow:
+    8px 8px 18px var(--neu-dark),
+    -8px -8px 18px var(--neu-light);
+  transform: translateY(-1px);
+}
+.neu-press:active {
+  box-shadow:
+    inset 4px 4px 9px var(--neu-dark),
+    inset -4px -4px 9px var(--neu-light);
+  transform: translateY(0);
+}
+
+/* ── Risk accents ─────────────────────────────────────────────────────────
+   Warm colour appears only where students are ill. Everything structural
+   stays neutral, so a glance at the screen reads danger immediately.       */
+
+.neu-glow-critical { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(239, 68, 68, 0.25), 0 0 28px -6px rgba(239, 68, 68, 0.5); }
+.neu-glow-elevated { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(249, 115, 22, 0.22), 0 0 24px -8px rgba(249, 115, 22, 0.42); }
+.neu-glow-watch    { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(245, 158, 11, 0.2); }
+.neu-glow-normal   { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(16, 185, 129, 0.18); }
+
+/* ── Motion ─────────────────────────────────────────────────────────────── */
+
+@keyframes neu-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: neu-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes neu-pulse-ring {
+  0%   { transform: scale(0.82); opacity: 0.75; }
+  70%  { transform: scale(2.4);  opacity: 0; }
+  100% { transform: scale(2.4);  opacity: 0; }
+}
+.animate-pulse-ring { animation: neu-pulse-ring 2.6s cubic-bezier(0.24, 0, 0.38, 1) infinite; }
+
+@keyframes neu-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-sweep { animation: neu-sweep 7s linear infinite; transform-origin: center; }
+
+@keyframes neu-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.animate-breathe { animation: neu-breathe 3.2s ease-in-out infinite; }
+
+@keyframes neu-shimmer {
+  from { background-position: -220% 0; }
+  to   { background-position: 220% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.75) 50%, transparent 100%);
+  background-size: 220% 100%;
+  animation: neu-shimmer 2.1s ease-in-out infinite;
+}
+
+@keyframes count-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-count { animation: count-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Stagger helpers so lists cascade instead of appearing all at once. */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise, .animate-pulse-ring, .animate-sweep,
+  .animate-breathe, .animate-shimmer, .animate-count {
+    animation: none;
+  }
+  .neu-press { transition: none; }
+}

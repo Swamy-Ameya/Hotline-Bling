@@ -1,234 +1,199 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
-import { UserRole } from '@/lib/types';
-import { 
-  ShieldAlert, 
-  Stethoscope, 
-  GraduationCap, 
-  ArrowRight, 
-  FileText, 
-  Activity,
+import {
+  ArrowRight,
+  Beaker,
+  Droplets,
+  HeartPulse,
   MapPin,
-  Radar,
-  Users,
-  BarChart3
+  Stethoscope,
+  UtensilsCrossed,
 } from 'lucide-react';
+import { AppShell } from '@/components/neu/shell';
+import { NeuButton, RiskBadge, Surface } from '@/components/neu';
+import { buildSituationReport } from '@/lib/domain/surveillance';
+import { countStudents } from '@/lib/db';
+import { BLOCKS } from '@/lib/domain/campus';
 
-export default function HomePage() {
-  const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<UserRole>('warden');
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )role=([^;]*)/);
-    if (match && (match[1] === 'student' || match[1] === 'doctor' || match[1] === 'warden')) {
-      setSelectedRole(match[1] as UserRole);
-    }
-  }, []);
+const STEPS = [
+  {
+    icon: Stethoscope,
+    title: 'The doctor writes it down once',
+    body: 'During a visit, the campus doctor records symptoms, when they started, and what was prescribed. The student’s block, floor and room come from the roster — nothing to ask, nothing typed twice.',
+  },
+  {
+    icon: HeartPulse,
+    title: 'Students report from their phone',
+    body: 'Most people never visit a health centre for a mild stomach upset, and the ones who do turn up a day late. A thirty-second form catches the rest, which is where the head start comes from.',
+  },
+  {
+    icon: UtensilsCrossed,
+    title: 'The mess data is already there',
+    body: 'Every plate collected is a card scan. That tells us who ate what and when, without anyone entering it by hand.',
+  },
+  {
+    icon: MapPin,
+    title: 'We look for things sitting together',
+    body: 'Same block, same floor, same meal, same few hours. When reports cluster somewhere they normally would not, the block shows up on the map.',
+  },
+];
 
-  const setRoleAndGo = (role: UserRole, url: string) => {
-    document.cookie = `role=${role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-    setSelectedRole(role);
-    router.push(url);
-  };
+export default async function HomePage() {
+  const report = buildSituationReport();
+  const students = countStudents();
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900">
-      {/* ───── NAV BAR ───── */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-200">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center">
-              <Radar className="size-4" />
+    <AppShell>
+      {/* ── hero ── */}
+      <section className="mx-auto max-w-7xl px-6 pb-10 pt-16">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_1fr]">
+          <div className="animate-rise">
+            <span className="inline-flex items-center gap-2 rounded-full neu-raised-sm px-3.5 py-1.5 text-xs font-semibold text-slate-500">
+              <Droplets className="size-3.5" />
+              Manipal University Jaipur
+            </span>
+
+            <h1 className="mt-5 text-5xl font-bold leading-[1.08] tracking-tight text-slate-800">
+              Find the bad tank
+              <br />
+              <span className="text-slate-400">before twenty students</span>
+              <br />
+              get sick.
+            </h1>
+
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-500">
+              Hostel stomach bugs get noticed on day three, once fifteen or twenty people are ill and
+              somebody finally connects them. The information existed on day one — it was just spread
+              across a warden’s register, the clinic, the mess complaint book and a floor WhatsApp
+              group. We put it in one place and watch for things that cluster.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/radar">
+                <NeuButton variant="primary" className="flex items-center gap-2 px-6 py-3 text-base">
+                  Open the dashboard
+                  <ArrowRight className="size-4" />
+                </NeuButton>
+              </Link>
+              <Link href="/report">
+                <NeuButton className="px-6 py-3 text-base">I’m not feeling well</NeuButton>
+              </Link>
             </div>
-            <span className="font-bold text-base tracking-tight">Outbreak Radar</span>
-          </Link>
 
-          <div className="flex items-center gap-1">
-            <Link href="/radar" className="px-3 py-1.5 rounded-lg text-sm text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors font-medium">
-              Dashboard
-            </Link>
-            <Link href="/report" className="px-3 py-1.5 rounded-lg text-sm text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors font-medium">
-              Report
-            </Link>
-            <Link href="/radar">
-              <button className="ml-2 px-4 py-1.5 rounded-lg text-sm font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors">
-                Open Radar →
-              </button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* ───── HERO ───── */}
-      <section className="max-w-6xl mx-auto px-6 pt-20 pb-16">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 mb-6">
-            <Activity className="size-3.5" />
-            Manipal University Jaipur · Hackathon POC
+            <div className="mt-10 flex flex-wrap gap-8">
+              {[
+                { v: students.toLocaleString(), l: 'students monitored' },
+                { v: BLOCKS.length, l: 'hostel blocks' },
+                { v: '3 days', l: 'the gap we close' },
+              ].map((s) => (
+                <div key={s.l}>
+                  <div className="text-2xl font-bold tabular-nums text-slate-800">{s.v}</div>
+                  <div className="text-xs text-slate-500">{s.l}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 leading-[1.1] mb-4">
-            Hostel micro-outbreak
-            <br />
-            <span className="text-zinc-400">early warning system</span>
-          </h1>
+          {/* live status card */}
+          <Surface glow={report.overall} className="p-7 animate-rise stagger-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                Campus right now
+              </span>
+              <RiskBadge level={report.overall} pulse />
+            </div>
 
-          <p className="text-lg text-zinc-500 leading-relaxed mb-8 max-w-lg">
-            Track illness reports across hostel blocks, identify whether the source 
-            is water or food, and prove it statistically before anyone panics.
-          </p>
+            <p className="mt-4 text-lg font-semibold leading-snug text-slate-800">
+              {report.headline}
+            </p>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setRoleAndGo('warden', '/radar')}
-              className="px-6 py-3 rounded-xl text-sm font-bold bg-zinc-900 text-white hover:bg-zinc-800 transition-all shadow-sm flex items-center gap-2"
-            >
-              Open Dashboard
-              <ArrowRight className="size-4" />
-            </button>
-            <button
-              onClick={() => setRoleAndGo('student', '/report')}
-              className="px-6 py-3 rounded-xl text-sm font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-all flex items-center gap-2"
-            >
-              <FileText className="size-4" />
-              Report Illness
-            </button>
-          </div>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {[
+                { v: report.totalCases, l: 'ill' },
+                { v: report.doctorConfirmed, l: 'seen by doctor' },
+                { v: report.hotspots.length, l: 'blocks flagged' },
+              ].map((s) => (
+                <Surface inset small key={s.l} className="px-3 py-3 text-center">
+                  <div className="text-2xl font-bold tabular-nums text-slate-800">{s.v}</div>
+                  <div className="mt-0.5 text-[11px] leading-tight text-slate-500">{s.l}</div>
+                </Surface>
+              ))}
+            </div>
+
+            {report.failingWaterSources.length > 0 && (
+              <Surface inset small className="mt-4 flex items-start gap-2.5 px-4 py-3">
+                <Beaker className="mt-0.5 size-4 shrink-0 text-red-500" />
+                <div className="text-xs leading-relaxed text-slate-600">
+                  <strong className="font-semibold text-slate-800">
+                    {report.failingWaterSources[0].name}
+                  </strong>{' '}
+                  failed its last test. {report.failingWaterSources[0].notes}
+                </div>
+              </Surface>
+            )}
+
+            <Link href="/radar" className="mt-5 block">
+              <NeuButton className="w-full">See the map</NeuButton>
+            </Link>
+          </Surface>
         </div>
       </section>
 
-      {/* ───── HOW IT WORKS ───── */}
-      <section className="border-t border-zinc-100 bg-zinc-50/50">
-        <div className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-8">How it works</h2>
+      {/* ── how it works ── */}
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-800">How it works</h2>
+        <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-500">
+          Nothing here asks anyone to do new work. Every input already exists on campus — it has just
+          never been in the same place at the same time.
+        </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-2xl bg-white border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover">
-              <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
-                <Users className="size-5" />
-              </div>
-              <h3 className="font-bold text-base mb-2 text-zinc-900">Students report symptoms</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">
-                60-second mobile form: what symptoms, when did they start, what did you eat in the last 72 hours.
-                Doctor reports carry 1.0 weight, self-reports carry 0.6.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-white border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover">
-              <div className="size-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
-                <BarChart3 className="size-5" />
-              </div>
-              <h3 className="font-bold text-base mb-2 text-zinc-900">Engine scans for clusters</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">
-                Spatial scan statistic over the hostel graph. 999 permutation replicates answer: 
-                "is this cluster real, or would random chance produce something this tight?"
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-white border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover">
-              <div className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
-                <MapPin className="size-5" />
-              </div>
-              <h3 className="font-bold text-base mb-2 text-zinc-900">Localise water vs food</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">
-                One block sick? It's the water tank. All blocks + day scholars sick? It's the mess kitchen. 
-                Sharp onset = food, smeared curve = water.
-              </p>
-            </div>
-          </div>
+        <div className="mt-9 grid gap-5 md:grid-cols-2">
+          {STEPS.map((s, i) => (
+            <Surface
+              key={s.title}
+              press
+              className={`p-6 animate-rise stagger-${i + 1}`}
+            >
+              <span className="grid size-11 place-items-center rounded-xl neu-inset-sm text-slate-600">
+                <s.icon className="size-5" />
+              </span>
+              <h3 className="mt-4 text-base font-bold text-slate-800">{s.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.body}</p>
+            </Surface>
+          ))}
         </div>
       </section>
 
-      {/* ───── ROLE CARDS ───── */}
-      <section className="border-t border-zinc-100">
-        <div className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-8 text-ao-subtle">Select your role</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Student */}
-            <button
-              onClick={() => setRoleAndGo('student', '/report')}
-              className="text-left p-6 rounded-2xl border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover bg-white group cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
-                  <GraduationCap className="size-5" />
-                </div>
-                <span className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-200/60 px-2 py-0.5 rounded-md">
-                  Hosteller
-                </span>
+      {/* ── the honest bit ── */}
+      <section className="mx-auto max-w-7xl px-6 pb-20">
+        <Surface inset className="p-9">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+            What this does not do
+          </h2>
+          <div className="mt-6 grid gap-7 md:grid-cols-3">
+            {[
+              {
+                t: 'It does not diagnose anyone',
+                b: 'It flags places, not people. A doctor decides what is wrong with a patient; this decides which block is worth a visit.',
+              },
+              {
+                t: 'It does not alert anyone on its own',
+                b: 'Every advisory is sent by a person. An automated warning fired off unverified reports is how you panic a campus at two in the morning.',
+              },
+              {
+                t: 'It does not track individuals',
+                b: 'Wardens see totals by block. Names and rooms stay with the health centre, and a location is never shown when only one or two people are involved.',
+              },
+            ].map((x) => (
+              <div key={x.t}>
+                <h3 className="text-sm font-bold text-slate-800">{x.t}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{x.b}</p>
               </div>
-              <h3 className="font-bold text-lg mb-1 text-zinc-900 group-hover:text-zinc-900">Student</h3>
-              <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
-                Report symptoms and track campus health advisories.
-              </p>
-              <span className="text-sm font-semibold text-zinc-900 flex items-center gap-1 group-hover:gap-2 transition-all">
-                Submit Report <ArrowRight className="size-3.5" />
-              </span>
-            </button>
-
-            {/* Doctor */}
-            <button
-              onClick={() => setRoleAndGo('doctor', '/radar')}
-              className="text-left p-6 rounded-2xl border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover bg-white group cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="size-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
-                  <Stethoscope className="size-5" />
-                </div>
-                <span className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-200/60 px-2 py-0.5 rounded-md">
-                  Health Centre
-                </span>
-              </div>
-              <h3 className="font-bold text-lg mb-1 text-zinc-900 group-hover:text-zinc-900">Doctor</h3>
-              <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
-                Clinical-grade intake with full-weight case logging.
-              </p>
-              <span className="text-sm font-semibold text-zinc-900 flex items-center gap-1 group-hover:gap-2 transition-all">
-                Open Radar <ArrowRight className="size-3.5" />
-              </span>
-            </button>
-
-            {/* Warden */}
-            <button
-              onClick={() => setRoleAndGo('warden', '/radar')}
-              className="text-left p-6 rounded-2xl border border-zinc-200/80 shadow-ao-card shadow-ao-card-hover bg-white group cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="size-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
-                  <ShieldAlert className="size-5" />
-                </div>
-                <span className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-200/60 px-2 py-0.5 rounded-md">
-                  Administration
-                </span>
-              </div>
-              <h3 className="font-bold text-lg mb-1 text-zinc-900 group-hover:text-zinc-900">Warden</h3>
-              <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
-                Triage clusters, verify water tests, confirm advisories.
-              </p>
-              <span className="text-sm font-semibold text-zinc-900 flex items-center gap-1 group-hover:gap-2 transition-all">
-                Command Centre <ArrowRight className="size-3.5" />
-              </span>
-            </button>
+            ))}
           </div>
-        </div>
+        </Surface>
       </section>
-
-      {/* ───── FOOTER ───── */}
-      <footer className="border-t border-zinc-100 bg-zinc-50/50">
-        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
-            <Radar className="size-4" />
-            <span>Outbreak Radar · Manipal University Jaipur</span>
-          </div>
-          <p className="text-xs text-zinc-400">
-            DPDP Act 2023 compliant · &lt;3 cases suppressed · Hackathon POC
-          </p>
-        </div>
-      </footer>
-    </div>
+    </AppShell>
   );
 }

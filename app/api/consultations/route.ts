@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createSelfReport, findStudent, getCases, getMealsEatenBy } from '@/lib/db';
+import { createConsultation, findStudent, getMealsEatenBy } from '@/lib/db';
 import type { Symptom } from '@/lib/db/types';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/reports — a student reporting their own symptoms.
+ * POST /api/consultations
  *
- * Lower trust than a doctor's record, and that is fine: the value is timing.
- * Most people do not visit a health centre for a mild stomach upset, and the
- * ones who eventually do turn up a day or two late. This channel is what makes
- * the difference between noticing on day one and noticing on day three.
+ * What the campus doctor files during a visit — the high-trust channel. The
+ * student's block, floor and room come from the roster, so the doctor never
+ * has to ask for them; the form is symptoms, when it started, and what they
+ * were prescribed.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -30,20 +30,25 @@ export async function POST(request: Request) {
     );
   }
 
+  // Pull the meals they actually collected in the 72h before onset straight
+  // from the mess scans, rather than asking a sick student to remember.
   const meals = getMealsEatenBy(student.id, 72).map((m) => m.id);
 
-  const row = createSelfReport({
+  const row = createConsultation({
     studentId: student.id,
+    doctorId: body.doctorId ?? 'staff-doc-1',
     symptoms: body.symptoms as Symptom[],
     onsetAt: body.onsetAt,
-    severity: Number(body.severity ?? 2),
+    severity: Number(body.severity ?? 3),
+    diagnosis: body.diagnosis,
+    prescription: body.prescription,
+    notes: body.notes,
     mealIds: meals,
   });
 
   return NextResponse.json({
     ok: true,
     id: row.id,
-    prompted: row.promptedByAlertId !== null,
     student: {
       name: student.name,
       registration: student.registration,
@@ -51,12 +56,6 @@ export async function POST(request: Request) {
       floor: student.floor,
       room: student.room,
     },
+    mealsLinked: meals.length,
   });
-}
-
-/** GET /api/reports — recent cases, both channels. */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const hours = Number(searchParams.get('hours') ?? 72);
-  return NextResponse.json({ ok: true, cases: getCases(hours) });
 }

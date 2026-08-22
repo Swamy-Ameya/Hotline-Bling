@@ -1,0 +1,410 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  Search,
+  Stethoscope,
+  UtensilsCrossed,
+  User,
+} from 'lucide-react';
+import { NeuButton, SectionTitle, Surface, timeAgo } from '@/components/neu';
+import { SYMPTOM_LABEL, type Symptom } from '@/lib/db/types';
+import { cn } from '@/lib/utils';
+
+interface StudentHit {
+  id: string;
+  registration: string;
+  name: string;
+  blockId: string | null;
+  floor: number | null;
+  room: string | null;
+}
+
+interface MealHit {
+  id: string;
+  mealType: string;
+  menuItems: string[];
+  opensAt: string;
+}
+
+const SYMPTOMS = Object.keys(SYMPTOM_LABEL) as Symptom[];
+
+const COMMON_DIAGNOSES = [
+  'Acute gastroenteritis',
+  'Food poisoning (suspected)',
+  'Viral fever',
+  'Dehydration',
+  'Traveller’s diarrhoea',
+];
+
+export function DoctorClient({ recentCount }: { recentCount: number }) {
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState<StudentHit[]>([]);
+  const [student, setStudent] = useState<StudentHit | null>(null);
+  const [meals, setMeals] = useState<MealHit[]>([]);
+
+  const [symptoms, setSymptoms] = useState<Symptom[]>([]);
+  const [onset, setOnset] = useState('');
+  const [severity, setSeverity] = useState(3);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [prescription, setPrescription] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<{ name: string; meals: number } | null>(null);
+
+  /* default onset to a few hours ago — that is nearly always the honest answer */
+  useEffect(() => {
+    const d = new Date(Date.now() - 6 * 3600_000);
+    d.setMinutes(0, 0, 0);
+    setOnset(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+  }, []);
+
+  /* typeahead */
+  useEffect(() => {
+    if (query.trim().length < 2 || student) {
+      setHits([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/students?q=${encodeURIComponent(query)}`);
+      const json = await res.json();
+      if (!cancelled) setHits(json.results ?? []);
+    }, 160);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [query, student]);
+
+  async function pick(hit: StudentHit) {
+    setStudent(hit);
+    setQuery('');
+    setHits([]);
+    const res = await fetch(`/api/students?exact=${encodeURIComponent(hit.registration)}`);
+    const json = await res.json();
+    setMeals(json.recentMeals ?? []);
+  }
+
+  function toggle(s: Symptom) {
+    setSymptoms((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  }
+
+  const canSave = student && symptoms.length > 0 && onset && !saving;
+
+  async function save() {
+    if (!student) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/consultations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student: student.registration,
+          symptoms,
+          onsetAt: new Date(onset).toISOString(),
+          severity,
+          diagnosis: diagnosis || undefined,
+          prescription: prescription || undefined,
+          notes: notes || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setSaved({ name: student.name, meals: json.mealsLinked ?? 0 });
+        reset();
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function reset() {
+    setStudent(null);
+    setMeals([]);
+    setSymptoms([]);
+    setSeverity(3);
+    setDiagnosis('');
+    setPrescription('');
+    setNotes('');
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl px-6 pb-24 pt-8">
+      <Surface className="mb-6 p-7 animate-rise">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              <Stethoscope className="size-3.5" />
+              Campus health centre
+            </div>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-800">
+              Record a consultation
+            </h1>
+            <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-500">
+              Look the student up and fill this in during the visit. Their block, floor and room come
+              from the roster, and the meals they collected are pulled from the mess scans — so there
+              is nothing to ask about and nothing to type twice.
+            </p>
+          </div>
+          <Surface inset small className="px-4 py-3 text-center">
+            <div className="text-2xl font-bold tabular-nums text-slate-800">{recentCount}</div>
+            <div className="text-[11px] text-slate-500">seen in 72h</div>
+          </Surface>
+        </div>
+      </Surface>
+
+      {saved && (
+        <Surface className="mb-6 flex items-start gap-3 border border-emerald-200/60 bg-emerald-50/60 p-5 animate-rise">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+          <div>
+            <div className="text-sm font-semibold text-emerald-800">
+              Consultation saved for {saved.name}
+            </div>
+            <p className="mt-0.5 text-xs text-emerald-700">
+              {saved.meals > 0
+                ? `${saved.meals} meals from the last three days were linked automatically.`
+                : 'No recent mess scans found for this student.'}{' '}
+              It is already counted on the dashboard.
+            </p>
+          </div>
+          <NeuButton variant="ghost" className="ml-auto" onClick={() => setSaved(null)}>
+            Dismiss
+          </NeuButton>
+        </Surface>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+        <div className="space-y-5">
+          {/* ── student lookup ── */}
+          <Surface className="p-6 animate-rise stagger-1">
+            <SectionTitle hint="Registration number, name, or room">Student</SectionTitle>
+
+            {student ? (
+              <Surface inset small className="flex items-center gap-4 px-4 py-3.5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full neu-raised-sm text-slate-500">
+                  <User className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-slate-800">{student.name}</div>
+                  <div className="text-xs text-slate-500">
+                    {student.registration}
+                    {student.blockId
+                      ? ` · Block ${student.blockId.replace('block-', '')}, Floor ${student.floor}, Room ${student.room}`
+                      : ' · Day scholar'}
+                  </div>
+                </div>
+                <NeuButton variant="ghost" onClick={reset}>
+                  Change
+                </NeuButton>
+              </Surface>
+            ) : (
+              <div className="relative">
+                <div className="flex items-center gap-3 rounded-xl neu-inset-sm px-4 py-3">
+                  <Search className="size-4 shrink-0 text-slate-400" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Start typing a registration number or name…"
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                {hits.length > 0 && (
+                  <Surface className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto p-2">
+                    {hits.map((h) => (
+                      <button
+                        key={h.id}
+                        onClick={() => pick(h)}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-white/70"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-slate-800">{h.name}</div>
+                          <div className="text-xs text-slate-500">
+                            {h.registration}
+                            {h.blockId
+                              ? ` · ${h.blockId.replace('block-', '')} ${h.room}`
+                              : ' · Day scholar'}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </Surface>
+                )}
+              </div>
+            )}
+          </Surface>
+
+          {/* ── symptoms ── */}
+          <Surface className="p-6 animate-rise stagger-2">
+            <SectionTitle hint="Tap everything that applies">Symptoms</SectionTitle>
+            <div className="flex flex-wrap gap-2">
+              {SYMPTOMS.map((s) => {
+                const on = symptoms.includes(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggle(s)}
+                    className={cn(
+                      'rounded-xl px-3.5 py-2 text-sm font-medium transition-all',
+                      on ? 'neu-inset-sm text-slate-900' : 'neu-raised-sm text-slate-600',
+                    )}
+                  >
+                    {SYMPTOM_LABEL[s]}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  When did it start?
+                </label>
+                <input
+                  type="datetime-local"
+                  value={onset}
+                  onChange={(e) => setOnset(e.target.value)}
+                  className="mt-2 w-full rounded-xl neu-inset-sm px-4 py-2.5 text-sm text-slate-800 outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  How unwell are they?
+                </label>
+                <div className="mt-2 flex gap-1.5">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setSeverity(n)}
+                      className={cn(
+                        'h-10 flex-1 rounded-xl text-sm font-semibold transition-all',
+                        severity === n
+                          ? n >= 4
+                            ? 'neu-inset-sm text-red-600'
+                            : 'neu-inset-sm text-slate-900'
+                          : 'neu-raised-sm text-slate-500',
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-1.5 flex justify-between text-[11px] text-slate-400">
+                  <span>Mild</span>
+                  <span>Severe</span>
+                </div>
+              </div>
+            </div>
+          </Surface>
+
+          {/* ── prescription ── */}
+          <Surface className="p-6 animate-rise stagger-3">
+            <SectionTitle hint="Optional, but it helps the record">Assessment</SectionTitle>
+
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Diagnosis
+            </label>
+            <input
+              value={diagnosis}
+              onChange={(e) => setDiagnosis(e.target.value)}
+              placeholder="e.g. Acute gastroenteritis"
+              className="mt-2 w-full rounded-xl neu-inset-sm px-4 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {COMMON_DIAGNOSES.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDiagnosis(d)}
+                  className="rounded-lg px-2.5 py-1 text-xs font-medium text-slate-500 neu-raised-sm transition-colors hover:text-slate-800"
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            <label className="mt-5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Prescription
+            </label>
+            <textarea
+              value={prescription}
+              onChange={(e) => setPrescription(e.target.value)}
+              rows={2}
+              placeholder="e.g. ORS sachets 6-hourly, light diet, review in 24h"
+              className="mt-2 w-full resize-none rounded-xl neu-inset-sm px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            />
+
+            <label className="mt-5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Notes
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Anything else worth recording"
+              className="mt-2 w-full resize-none rounded-xl neu-inset-sm px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            />
+          </Surface>
+
+          <NeuButton
+            variant="primary"
+            disabled={!canSave}
+            onClick={save}
+            className="flex w-full items-center justify-center gap-2 py-3.5 text-base"
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}
+            {saving ? 'Saving…' : 'Save consultation'}
+          </NeuButton>
+        </div>
+
+        {/* ── side: what we already know about this student ── */}
+        <div className="space-y-5">
+          <Surface className="p-6 animate-rise stagger-4">
+            <SectionTitle hint="Pulled from mess card scans">Recent meals</SectionTitle>
+            {!student ? (
+              <p className="text-sm leading-relaxed text-slate-500">
+                Pick a student and their last three days of mess visits will appear here
+                automatically.
+              </p>
+            ) : meals.length === 0 ? (
+              <p className="text-sm leading-relaxed text-slate-500">
+                No mess scans in the last three days. They may have been eating outside campus.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {meals.slice(0, 8).map((m) => (
+                  <li key={m.id}>
+                    <Surface inset small className="px-3.5 py-2.5">
+                      <div className="flex items-center gap-2 text-xs font-semibold capitalize text-slate-700">
+                        <UtensilsCrossed className="size-3.5 text-slate-400" />
+                        {m.mealType}
+                        <span className="ml-auto font-normal text-slate-400">
+                          {timeAgo(m.opensAt)}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                        {m.menuItems.join(' · ')}
+                      </div>
+                    </Surface>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Surface>
+
+          <Surface inset className="p-5 animate-rise stagger-5">
+            <p className="text-xs leading-relaxed text-slate-500">
+              What you record here is what the dashboard trusts most. A student tapping a form on
+              their phone counts for something, but a clinician who actually examined the patient
+              counts for more — and that difference is what stops a handful of self-reports from
+              triggering a campus-wide alarm.
+            </p>
+          </Surface>
+        </div>
+      </div>
+    </div>
+  );
+}
