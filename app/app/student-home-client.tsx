@@ -1,160 +1,148 @@
 'use client';
 
+/**
+ * The student's home screen.
+ *
+ * A student needs four things and nothing else: whether their own block is
+ * fine, whether anything has been sent to them, a way to report in under a
+ * minute, and an honest picture of the rest of campus.
+ *
+ * What they deliberately do not get is case counts per block. A number next to
+ * "B1, floor 2" in a hostel of sixty people identifies somebody. Levels are
+ * the finest resolution a student view can honestly carry.
+ */
+
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Plus, Building, Bell, ShieldCheck, Activity } from 'lucide-react';
-import { Surface, RiskBadge } from '@/components/neu';
+import { RiskBadge } from '@/components/neu';
+import { RISK_STOP } from '@/components/thermal';
 import type { StudentView } from '@/lib/domain/student-view';
 import { POOLS } from '@/lib/domain/pools';
 
 export function StudentHomeClient({ view }: { view: StudentView }) {
-  const { student, myBlock, campus, myPool, advisories, myReports } = view;
-  const unreadAdvisories = advisories.filter((a) => !a.readAt);
+  const { student, myBlock, campus, myPool, advisories } = view;
+  const unread = advisories.filter((a) => !a.readAt);
 
   return (
-    <div className="space-y-5 animate-rise">
-      {/* Greeting & Block Card */}
-      <Surface className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Hostel Resident
-            </span>
-            <h1 className="text-xl font-bold tracking-tight text-slate-800 mt-0.5">
-              {student.name}
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              {student.blockName ? `Block ${student.blockName}` : 'Day Scholar'}
-              {student.floor ? ` · Floor ${student.floor}` : ''}
-              {student.room ? ` · Room ${student.room}` : ''} · Reg {student.registration}
-            </p>
-          </div>
-
-          {myBlock && (
-            <div className="flex flex-col items-end">
-              <span className="text-[11px] font-medium text-slate-400 mb-1">Your Block</span>
+    <div className="animate-rise">
+      {/* ── who and where ─────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 border-b border-line-light pb-5">
+        <div>
+          <span className="eyebrow">Hostel resident</span>
+          <h1 className="mt-1.5 text-[20px] font-bold tracking-[-0.02em] text-ink">
+            {student.name}
+          </h1>
+          <p className="mt-1 text-[11px] text-muted-ink">
+            {student.blockName ? `Block ${student.blockName}` : 'Day scholar'}
+            {student.floor ? ` · Floor ${student.floor}` : ''}
+            {student.room ? ` · Room ${student.room}` : ''}
+            {' · '}
+            <span className="font-mono">{student.registration}</span>
+          </p>
+        </div>
+        {myBlock && (
+          <div className="text-right">
+            <span className="meta">Your block</span>
+            <div className="mt-1.5">
               <RiskBadge level={myBlock.level} pulse={myBlock.level !== 'normal'} />
             </div>
-          )}
-        </div>
-      </Surface>
+          </div>
+        )}
+      </div>
 
-      {/* Advisory Banner (if unread) */}
-      {unreadAdvisories.length > 0 && (
-        <Link href="/app/alerts">
-          <Surface glow="critical" className="p-4 flex items-center justify-between gap-3 bg-red-50/60 border border-red-200">
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-xl bg-red-500 text-white shadow-sm shrink-0">
-                <Bell className="size-4 animate-bounce" />
-              </span>
-              <div>
-                <div className="text-xs font-bold text-red-900">
-                  {unreadAdvisories[0].title}
-                </div>
-                <div className="text-[11px] text-red-700 line-clamp-1">
-                  {unreadAdvisories[0].body}
-                </div>
-              </div>
+      {/* ── an advisory addressed to you ──────────────────────────────── */}
+      {unread.length > 0 && (
+        <Link href="/app/alerts" className="mt-5 block">
+          <div className="panel-critical px-5 py-4">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-85">
+              ■ Advisory for you
             </div>
-            <ArrowRight className="size-4 text-red-600 shrink-0" />
-          </Surface>
+            <div className="mt-2 text-[14px] font-semibold leading-snug">{unread[0].title}</div>
+            <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed opacity-90">
+              {unread[0].body}
+            </p>
+            <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em]">
+              Read it →
+            </div>
+          </div>
         </Link>
       )}
 
-      {/* One-Tap Report Symptoms Primary CTA */}
-      <Link href="/app/report" className="block group">
-        <Surface className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white hover:shadow-xl transition-all neu-press">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-indigo-200">
-                <Plus className="size-3" /> Quick self-report
-              </div>
-              <h2 className="text-lg font-bold">Feeling unwell today?</h2>
-              <p className="text-xs text-slate-300 max-w-xs">
-                Takes under 1 minute. Connects anonymously to hostel health monitoring.
-              </p>
+      {/* ── the one action ────────────────────────────────────────────── */}
+      <Link href="/app/report" className="mt-5 block">
+        <div className="flex items-center justify-between gap-4 bg-ink px-5 py-6 text-paper-bright transition-colors hover:bg-ink-soft">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-70">
+              Self-report
             </div>
-            <div className="grid size-12 place-items-center rounded-2xl bg-white/10 text-white transition-transform group-hover:translate-x-1">
-              <ArrowRight className="size-6" />
+            <div className="mt-2 display text-[clamp(1.3rem,6vw,1.7rem)]">
+              Feeling unwell?
             </div>
+            <p className="mt-2 max-w-xs text-[12px] leading-relaxed opacity-80">
+              Under a minute. Your name never leaves the health centre — the map only ever shows
+              your block.
+            </p>
           </div>
-        </Surface>
+          <span className="text-[22px] leading-none">→</span>
+        </div>
       </Link>
 
-      {/* Sickness Pool Status */}
+      {/* ── pool ──────────────────────────────────────────────────────── */}
       {myPool && (
-        <Surface className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-xl neu-inset-sm text-indigo-600">
-                <Activity className="size-5" />
-              </span>
-              <div>
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Your Classified Pool
-                </span>
-                <div className="text-sm font-bold text-slate-800">
-                  {POOLS[myPool].label}
-                </div>
-              </div>
+        <Link href="/app/pool" className="mt-5 block">
+          <div className="flex items-center justify-between border border-line-light bg-paper-bright px-4 py-3.5">
+            <div>
+              <span className="meta">Your pool</span>
+              <div className="mt-1 text-[13px] font-semibold text-ink">{POOLS[myPool].label}</div>
             </div>
-            <Link
-              href="/app/pool"
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-            >
-              View Spread Map →
-            </Link>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-ink">
+              Spread →
+            </span>
           </div>
-        </Surface>
+        </Link>
       )}
 
-      {/* Campus Risk Overview (Level Only - No Case Counts) */}
-      <Surface className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Campus Status Overview</h2>
-            <p className="text-xs text-slate-500">General hostel health indicator (no private case counts)</p>
-          </div>
-          <ShieldCheck className="size-5 text-slate-400" />
+      {/* ── campus, as levels only ────────────────────────────────────── */}
+      <section className="mt-8">
+        <div className="flex items-baseline justify-between border-b border-ink pb-2">
+          <span className="eyebrow">Campus right now</span>
+          <span className="meta">Levels only</span>
         </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-          {campus.map((b) => (
-            <div
-              key={b.blockId}
-              className={`rounded-xl p-2.5 text-center transition-all ${
-                b.level === 'critical'
-                  ? 'bg-red-500 text-white font-bold shadow-md shadow-red-200'
-                  : b.level === 'elevated'
-                    ? 'bg-orange-400 text-white font-semibold'
-                    : b.level === 'watch'
-                      ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                      : 'neu-inset-sm text-slate-700'
-              }`}
-            >
-              <div className="text-xs font-bold">{b.name}</div>
-              <div className="text-[9px] uppercase tracking-tighter opacity-80 mt-0.5">
-                {b.level}
+        <div className="mt-4 grid grid-cols-4 gap-px bg-line-light sm:grid-cols-5">
+          {campus.map((b) => {
+            const stop = RISK_STOP[b.level];
+            const hot = b.level !== 'normal';
+            const mine = myBlock?.name === b.name;
+            return (
+              <div
+                key={b.blockId}
+                className="relative px-2 py-3 text-center"
+                style={{
+                  background: hot ? `var(--t${stop}-top)` : 'var(--paper-bright)',
+                  color: stop >= 5 ? '#FFFFFF' : 'var(--ink)',
+                }}
+              >
+                {mine && (
+                  <span
+                    className="absolute inset-0 border-2 border-ink"
+                    aria-label="your block"
+                  />
+                )}
+                <div className="text-[12px] font-bold">{b.name}</div>
+                <div className="mt-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] opacity-75">
+                  {b.level}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 pt-3 border-t border-slate-200/50 text-[11px] text-slate-500">
-          <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-emerald-500 inline-block" /> Normal
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-amber-400 inline-block" /> Watch
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-orange-500 inline-block" /> Elevated
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-red-500 inline-block" /> Attention
-          </span>
-        </div>
-      </Surface>
+        <p className="mt-4 text-[11px] leading-relaxed text-muted-ink">
+          Colour is the level, not a count. Your own block is outlined. Numbers are deliberately not
+          shown here — in a hostel this size, a case count next to a floor identifies somebody.
+        </p>
+      </section>
     </div>
   );
 }

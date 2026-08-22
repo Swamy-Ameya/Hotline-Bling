@@ -1,20 +1,27 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Beaker, Building2, Droplets, Layers, Users, UtensilsCrossed } from 'lucide-react';
 import { AppShell } from '@/components/neu/shell';
-import { ConfidencePill, RiskBadge, Surface } from '@/components/neu';
+import { ConfidencePill, RiskBadge, Stat, StatusMark } from '@/components/neu';
 import { timeAgo } from '@/lib/format';
-import { BLOCKS, blockById, blockCapacity, floorCapacity, messForBlock } from '@/lib/domain/campus';
+import { blockById, blockCapacity, floorCapacity, messForBlock } from '@/lib/domain/campus';
 import { SOURCE_META } from '@/lib/domain/risk';
 import { buildSituationReport } from '@/lib/domain/surveillance';
 import { getCases, getMealAttendees, getRecentMeals, getWaterTests } from '@/lib/db';
 import { getMockDb } from '@/lib/db/mock';
 import { SYMPTOM_LABEL } from '@/lib/db/types';
-import { heatClass } from '@/components/thermal';
-import { cn } from '@/lib/utils';
+import { thermalStopFor } from '@/components/thermal';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * One block, floor by floor.
+ *
+ * The whole point of this page is the floor column. Illness spread evenly
+ * across every floor points at the block's shared tank; illness stuck on one
+ * floor is more often passing between students through a shared washroom.
+ * Those are different problems with different first actions, and only this
+ * view separates them.
+ */
 export default async function BlockPage({ params }: { params: Promise<{ blockId: string }> }) {
   const { blockId } = await params; // Next 16: params is a Promise
   const block = blockById(blockId);
@@ -45,179 +52,239 @@ export default async function BlockPage({ params }: { params: Promise<{ blockId:
   });
 
   const peak = Math.max(1, ...perFloor.map((f) => f.cases));
+  const doctorCount = cases.filter((c) => c.origin === 'doctor').length;
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-6xl px-6 pb-24 pt-8">
-        <Link
-          href="/radar"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
-        >
-          <ArrowLeft className="size-4" />
-          Back to dashboard
-        </Link>
+      <div className="editorial pb-24 pt-8">
+        {/* ── header ──────────────────────────────────────────────────── */}
+        <div className="flex items-baseline justify-between gap-4 border-b border-line-light pb-3">
+          <Link href="/radar" className="meta transition-colors hover:text-ink">
+            ← Campus radar
+          </Link>
+          <span className="meta">
+            {block.gender === 'boys' ? "Boys' hostel" : "Girls' hostel"} · Tank {block.tankId.replace('tank-', '')}
+          </span>
+        </div>
 
-        {/* header */}
-        <Surface glow={hotspot?.level} className="mt-4 p-7 animate-rise">
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="grid size-11 place-items-center rounded-xl neu-inset-sm text-slate-600">
-                  <Building2 className="size-5" />
-                </span>
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-800">
-                    Block {block.name}
-                  </h1>
-                  <p className="text-sm text-slate-500">
-                    {block.gender === 'boys' ? "Boys' hostel" : "Girls' hostel"} ·{' '}
-                    {blockCapacity(block).toLocaleString()} students · {block.floors} floors · Served by {mess?.name ?? 'Central Mess'}
-                  </p>
-                </div>
-              </div>
-
-              {hotspot ? (
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-700">
-                  {hotspot.summary}
-                </p>
-              ) : (
-                <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-500">
-                  Nothing unusual in this block right now. {cases.length} report
-                  {cases.length === 1 ? '' : 's'} in the last three days, which is within the normal
-                  range.
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col items-end gap-3">
-              <RiskBadge level={hotspot?.level ?? 'normal'} pulse />
-              {hotspot && <ConfidencePill level={hotspot.confidence} />}
-            </div>
+        <div className="grid gap-8 pt-8 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <RiskBadge level={hotspot?.level ?? 'normal'} pulse />
+            <h1 className="mt-4 display text-[clamp(2.4rem,6vw,4rem)] text-ink">
+              Block {block.name}
+            </h1>
+            <p className="mt-5 max-w-2xl text-[15px] leading-[1.6] text-ink-soft">
+              {hotspot
+                ? hotspot.summary
+                : `Nothing unusual in this block right now. ${cases.length} report${
+                    cases.length === 1 ? '' : 's'
+                  } in the last three days, which is within the normal range.`}
+            </p>
           </div>
-        </Surface>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px]">
-          <div className="space-y-5">
-            {/* floors */}
-            <Surface className="p-6 animate-rise stagger-1">
-              <div className="mb-5 flex items-center gap-2">
-                <Layers className="size-4 text-slate-400" />
-                <h2 className="text-base font-bold text-slate-800">Floor by floor</h2>
+          <div className="lg:col-span-4">
+            {hotspot && (
+              <div className="border border-line-light bg-paper-bright p-5">
+                <div className="flex items-center justify-between">
+                  <span className="meta">Assessment</span>
+                  <ConfidencePill level={hotspot.confidence} />
+                </div>
+                <div className="mt-3 text-[14px] font-semibold text-ink">
+                  {SOURCE_META[hotspot.source].label}
+                </div>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-muted-ink">
+                  {hotspot.recommendedAction}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── metrics ─────────────────────────────────────────────────── */}
+        <div className="mt-10 grid grid-cols-2 gap-px border-y border-line-light bg-line-light sm:grid-cols-4">
+          {[
+            { l: 'Reports · 72 h', v: cases.length },
+            { l: 'Seen by a doctor', v: doctorCount },
+            { l: 'Residents', v: blockCapacity(block).toLocaleString() },
+            { l: 'Floors', v: block.floors },
+          ].map((s, i) => (
+            <div key={s.l} className="bg-paper px-5 py-6">
+              <Stat label={s.l} value={s.v} delay={i * 60} />
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-14 grid gap-12 lg:grid-cols-12">
+          <div className="min-w-0 lg:col-span-8">
+            {/* ── floors ──────────────────────────────────────────────── */}
+            <section>
+              <div className="flex items-baseline justify-between border-b border-ink pb-2">
+                <span className="eyebrow">01 / Floor by floor</span>
+                <span className="meta">Reports per floor</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="mt-5">
                 {[...perFloor].reverse().map((f) => {
                   const share = f.cases / peak;
+                  const stop = f.cases > 0 ? thermalStopFor(share) : 0;
                   return (
-                    <div key={f.floor} className="flex items-center gap-4">
-                      <span className="w-16 shrink-0 text-sm font-semibold text-slate-600">
-                        Floor {f.floor}
-                      </span>
-                      <div className="h-9 flex-1 overflow-hidden rounded-xl neu-inset-sm p-1">
-                        <div
-                          className={cn(
-                            'flex h-full items-center justify-end rounded-lg px-3 transition-all duration-700 text-xs font-bold shadow-xs',
-                            f.cases > 0 ? heatClass(share) : 'bg-slate-100 text-slate-400',
-                          )}
-                          style={{ width: `${Math.max(10, share * 100)}%` }}
+                    <div
+                      key={f.floor}
+                      className="grid grid-cols-[4.5rem_1fr_7rem] items-center gap-4 border-b border-line-light py-3"
+                    >
+                      <span className="text-[12px] font-semibold text-ink">Floor {f.floor}</span>
+                      <span className="relative block h-7 bg-paper-sunk">
+                        <span
+                          className="absolute inset-y-0 left-0 flex items-center justify-end px-2 text-[11px] font-bold"
+                          style={{
+                            width: `${Math.max(3, share * 100)}%`,
+                            background: f.cases > 0 ? `var(--t${stop}-top)` : 'var(--line-light)',
+                            color: stop >= 5 ? '#FFFFFF' : 'var(--ink)',
+                          }}
                         >
-                          {f.cases > 0 && (
-                            <span className={share > 0.5 ? 'text-white' : 'text-slate-800'}>
-                              {f.cases}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="w-32 shrink-0 text-right text-xs text-slate-400">
-                        {f.cases === 0
-                          ? 'no reports'
-                          : `${f.doctor} seen by doctor`}
+                          {/* Below three, a floor is a person, not a statistic.
+                              CLAUDE.md §7 — suppress rather than name. */}
+                          {f.cases === 0 ? '' : f.cases < 3 ? '<3' : f.cases}
+                        </span>
+                      </span>
+                      <span className="text-right text-[11px] text-muted-ink">
+                        {f.cases === 0 ? 'no reports' : `${f.doctor} seen by doctor`}
                       </span>
                     </div>
                   );
                 })}
               </div>
 
-              <p className="mt-5 text-xs leading-relaxed text-slate-400">
-                Illness spread evenly across every floor points at the block’s shared tank. Illness
-                stuck on one floor is more often passing between students through shared washrooms.
+              <p className="mt-4 max-w-2xl text-[12px] leading-relaxed text-muted-ink">
+                Illness spread evenly across every floor points at the block&rsquo;s shared tank.
+                Illness stuck on one floor is more often passing between students through shared
+                washrooms — a different problem, and a different first action.
               </p>
-            </Surface>
+            </section>
 
-            {/* cases */}
-            <Surface className="p-6 animate-rise stagger-2">
-              <div className="mb-4 flex items-center gap-2">
-                <Users className="size-4 text-slate-400" />
-                <h2 className="text-base font-bold text-slate-800">
-                  Reports ({cases.length})
-                </h2>
+            {/* ── reports ─────────────────────────────────────────────── */}
+            <section className="mt-14">
+              <div className="flex items-baseline justify-between border-b border-ink pb-2">
+                <span className="eyebrow">02 / Reports</span>
+                <span className="meta tabular-nums">{cases.length} in 72 h</span>
               </div>
 
               {cases.length === 0 ? (
-                <p className="text-sm text-slate-500">No reports from this block in the last three days.</p>
+                <p className="mt-5 text-[13px] text-muted-ink">
+                  No reports from this block in the last three days.
+                </p>
               ) : (
-                <ul className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-                  {cases.map((c) => (
-                    <li key={c.id}>
-                      <Surface inset small className="flex items-start gap-3 px-4 py-3">
-                        <span
-                          className={`mt-1 size-2 shrink-0 rounded-full ${
-                            c.origin === 'doctor' ? 'bg-slate-700' : 'bg-slate-300'
-                          }`}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-semibold text-slate-800">
-                              Floor {c.floor}
-                            </span>
-                            <span className="text-xs text-slate-400">
-                              {c.origin === 'doctor' ? 'Seen at the health centre' : 'Self-reported'}
-                            </span>
-                            {c.prompted && (
-                              <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                                after advisory
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-0.5 text-xs text-slate-600">
-                            {c.symptoms.map((s) => SYMPTOM_LABEL[s]).join(', ')}
-                          </div>
-                          {c.diagnosis && (
-                            <div className="mt-0.5 text-[11px] italic text-slate-400">
-                              {c.diagnosis}
-                            </div>
-                          )}
-                        </div>
-                        <span className="shrink-0 text-[11px] text-slate-400">
+                <div className="-mx-1 mt-5 overflow-x-auto px-1">
+                <table className="w-full min-w-[520px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-line-light">
+                      {['Onset', 'Floor', 'Symptoms', 'Source'].map((h) => (
+                        <th key={h} className="pb-2 meta">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases.slice(0, 20).map((c) => (
+                      <tr key={c.id} className="border-b border-line-light">
+                        <td className="py-2.5 pr-3 text-[11px] tabular-nums text-muted-ink">
                           {timeAgo(c.onsetAt)}
+                        </td>
+                        <td className="py-2.5 pr-3 text-[12px] font-medium text-ink">
+                          {c.floor}
+                          {c.prompted && (
+                            <span className="ml-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-ink">
+                              after advisory
+                            </span>
+                          )}
+                        </td>
+                        <td className="max-w-[240px] truncate py-2.5 pr-3 text-[11px] text-muted-ink">
+                          {c.symptoms.map((s) => SYMPTOM_LABEL[s]).join(', ')}
+                          {c.diagnosis && (
+                            <span className="italic text-line"> · {c.diagnosis}</span>
+                          )}
+                        </td>
+                        <td className="py-2.5">
+                          <StatusMark
+                            label={c.origin === 'doctor' ? 'Verified' : 'Self'}
+                            tone={c.origin === 'doctor' ? 'ok' : 'neutral'}
+                            square={c.origin === 'doctor'}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+              )}
+
+              <p className="mt-4 text-[12px] leading-relaxed text-muted-ink">
+                Room numbers are not shown here. Wardens see the floor; the health centre sees the
+                rest.
+              </p>
+            </section>
+          </div>
+
+          {/* ── side ──────────────────────────────────────────────────── */}
+          <aside className="lg:col-span-4">
+            <section>
+              <div className="flex items-baseline justify-between border-b border-ink pb-2">
+                <span className="eyebrow">Tank tests</span>
+                {latest && (
+                  <StatusMark
+                    label={latest.passed ? 'Passed' : 'Failed'}
+                    tone={latest.passed ? 'ok' : 'critical'}
+                    square={!latest.passed}
+                  />
+                )}
+              </div>
+
+              {tests.length === 0 ? (
+                <p className="mt-4 text-[12px] text-muted-ink">
+                  No test records for this block&rsquo;s tank.
+                </p>
+              ) : (
+                <ul className="mt-2">
+                  {tests.map((t) => (
+                    <li key={t.id} className="border-b border-line-light py-3">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`text-[12px] font-semibold ${
+                            t.passed ? 'text-ink' : 'text-thermal-red'
+                          }`}
+                        >
+                          {t.passed ? 'Passed' : 'Failed'}
                         </span>
-                      </Surface>
+                        <span className="meta">{timeAgo(t.testedAt)}</span>
+                      </div>
+                      {t.notes && (
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-ink">{t.notes}</p>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap gap-3 meta">
+                        {t.tds != null && <span>TDS {t.tds}</span>}
+                        {t.chlorine != null && <span>Cl {t.chlorine}</span>}
+                        {t.ph != null && <span>pH {t.ph}</span>}
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
+            </section>
 
-              <p className="mt-4 text-xs leading-relaxed text-slate-400">
-                Room numbers are not shown here. Wardens see the floor; the health centre sees the
-                rest.
-              </p>
-            </Surface>
-
-            {/* 72h mess attendance timeline */}
             {mess && (
-              <Surface className="p-6 animate-rise stagger-3">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <UtensilsCrossed className="size-4 text-slate-400" />
-                    <h2 className="text-base font-bold text-slate-800">Mess attendance (72h)</h2>
-                  </div>
-                  <span className="text-xs text-slate-400">{mess.name}</span>
+              <section className="mt-12">
+                <div className="flex items-baseline justify-between border-b border-ink pb-2">
+                  <span className="eyebrow">Mess turnout</span>
+                  <span className="meta">{mess.name}</span>
                 </div>
 
                 {recentMeals.length === 0 ? (
-                  <p className="text-sm text-slate-500">No meal records found in the last 72 hours.</p>
+                  <p className="mt-4 text-[12px] text-muted-ink">
+                    No meal records in the last 72 hours.
+                  </p>
                 ) : (
-                  <div className="space-y-3">
+                  <ul className="mt-2">
                     {recentMeals.map((m) => {
                       const attendeeSet = getMealAttendees(m.id);
                       const count = blockStudents.filter((s) => attendeeSet.has(s.id)).length;
@@ -225,103 +292,27 @@ export default async function BlockPage({ params }: { params: Promise<{ blockId:
                       const pct = Math.round((count / cap) * 100);
 
                       return (
-                        <Surface key={m.id} inset small className="px-4 py-3">
+                        <li key={m.id} className="border-b border-line-light py-3">
                           <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-sm font-semibold capitalize text-slate-800">
-                                {m.mealType}
-                              </span>
-                              <span className="ml-2 text-xs text-slate-400">
-                                {timeAgo(m.opensAt)}
-                              </span>
-                            </div>
-                            <span className="text-xs font-semibold tabular-nums text-slate-700">
-                              {count} students ({pct}% turnout)
+                            <span className="text-[12px] font-semibold capitalize text-ink">
+                              {m.mealType}
+                            </span>
+                            <span className="text-[11px] tabular-nums text-muted-ink">
+                              {count} · {pct}%
                             </span>
                           </div>
-                          <p className="mt-1 text-xs text-slate-500">{m.menuItems.join(' · ')}</p>
-                        </Surface>
+                          <p className="mt-1 truncate text-[11px] text-muted-ink">
+                            {m.menuItems.join(' · ')}
+                          </p>
+                          <span className="meta">{timeAgo(m.opensAt)}</span>
+                        </li>
                       );
                     })}
-                  </div>
+                  </ul>
                 )}
-              </Surface>
+              </section>
             )}
-          </div>
-
-          {/* side panels: water & cause */}
-          <div className="space-y-5">
-            {/* cause breakdown */}
-            {hotspot && (
-              <Surface glow={hotspot.level} className="p-6 animate-rise stagger-1">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-slate-800">Assessment</h2>
-                  <ConfidencePill level={hotspot.confidence} />
-                </div>
-
-                <div className="mt-4 space-y-3 text-xs text-slate-600">
-                  <div className="flex items-start gap-2.5">
-                    <Droplets className="mt-0.5 size-4 shrink-0 text-slate-400" />
-                    <div>
-                      <strong className="font-semibold text-slate-800">
-                        {SOURCE_META[hotspot.source].label}
-                      </strong>
-                      <p className="mt-0.5 text-slate-500">{hotspot.recommendedAction}</p>
-                    </div>
-                  </div>
-                </div>
-              </Surface>
-            )}
-
-            {/* water tank status */}
-            <Surface className="p-6 animate-rise stagger-2">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Beaker className="size-4 text-slate-400" />
-                  <h2 className="text-base font-bold text-slate-800">Tank test results</h2>
-                </div>
-                {latest && (
-                  <span
-                    className={cn(
-                      'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                      latest.passed
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'bg-red-50 text-red-700',
-                    )}
-                  >
-                    {latest.passed ? 'Passed' : 'Failed'}
-                  </span>
-                )}
-              </div>
-
-              {tests.length === 0 ? (
-                <p className="text-sm text-slate-500">No test records for this block’s tank.</p>
-              ) : (
-                <ul className="space-y-2.5">
-                  {tests.map((t) => (
-                    <li key={t.id}>
-                      <Surface inset small className="px-3.5 py-2.5">
-                        <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                          <span>{t.passed ? 'Passed test' : 'Failed test'}</span>
-                          <span className="text-[11px] font-normal text-slate-400">
-                            {timeAgo(t.testedAt)}
-                          </span>
-                        </div>
-                        {t.notes && (
-                          <p className="mt-1 text-xs leading-relaxed text-slate-600">{t.notes}</p>
-                        )}
-                        <div className="mt-1.5 flex gap-3 text-[11px] text-slate-400">
-                          {t.tds != null && <span>TDS {t.tds} mg/L</span>}
-                          {t.chlorine != null && <span>Cl {t.chlorine} mg/L</span>}
-                          {t.ph != null && <span>pH {t.ph}</span>}
-                        </div>
-                      </Surface>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Surface>
-          </div>
+          </aside>
         </div>
       </div>
     </AppShell>

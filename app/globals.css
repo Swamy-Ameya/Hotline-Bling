@@ -4,13 +4,47 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   OUTBREAK RADAR — THERMAL EDITORIAL SYSTEM
+
+   One idea, enforced everywhere: the interface is PAPER, and heat exists only
+   where students are ill.
+
+   Structure — borders, chrome, navigation, type — is achromatic. The moment
+   something on screen is amber, orange or crimson, it is because a measurement
+   put it there. Colour is information, never decoration.
+
+   Read docs/CLAUDE-DESIGN.md before changing a value in here. The map, the
+   badges, the epi curve and the landing hero all read these tokens, so one
+   nudge moves four surfaces at once.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-serif: var(--font-serif), 'Instrument Serif', Georgia, serif;
+
+  /* Editorial neutrals — bg-paper / text-ink / border-line. */
+  --color-paper: var(--paper);
+  --color-paper-bright: var(--paper-bright);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted-ink: var(--muted);
+  --color-line: var(--line);
+  --color-line-light: var(--line-light);
+
+  /* Thermal accents — bg-thermal-red / text-thermal-amber. */
+  --color-thermal-red: var(--thermal-red);
+  --color-thermal-crimson: var(--thermal-crimson);
+  --color-thermal-orange: var(--thermal-orange);
+  --color-thermal-amber: var(--thermal-amber);
+  --color-thermal-yellow: var(--thermal-yellow);
+  --color-thermal-hot: var(--thermal-hot);
+
+  --font-sans: var(--font-sans), Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-heading: var(--font-sans);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -40,453 +74,508 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Radii are near-zero by law. Printed technical panels do not have 20px
+     corners, and the moment one component does, it stops belonging here. */
+  --radius-sm: 0px;
+  --radius-md: 1px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
+  --radius-4xl: 2px;
 }
 
+/* ─────────────────────────────────────────────────────────── foundation ── */
+
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Paper. The environment when nothing is happening. */
+  --paper:        #F3F2EF;
+  --paper-bright: #F8F7F4;
+  --paper-sunk:   #EAE9E4;
+  --ink:          #171717;
+  --ink-soft:     #383838;
+  --muted:        #777777;
+  --line:         #A9A9A4;
+  --line-light:   #D6D5D0;
+
+  /* Thermal accent system. One meaning each — see docs/CLAUDE-DESIGN.md. */
+  --thermal-red:     #F22D16;
+  --thermal-crimson: #B51F24;
+  --thermal-orange:  #F4511E;
+  --thermal-amber:   #FF8A00;
+  --thermal-yellow:  #FFD43B;
+  --thermal-hot:     #FFF1A8;
+
+  /* shadcn compatibility — mapped onto paper so imported primitives inherit
+     the system instead of fighting it. */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-bright);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-bright);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper-bright);
+  --secondary: var(--paper-sunk);
+  --secondary-foreground: var(--ink);
+  --muted-foreground: var(--muted);
+  --accent: var(--paper-sunk);
+  --accent-foreground: var(--ink);
+  --destructive: var(--thermal-red);
+  --border: var(--line-light);
+  --input: var(--line-light);
+  --ring: var(--ink-soft);
+  --chart-1: var(--thermal-red);
+  --chart-2: var(--thermal-amber);
+  --chart-3: var(--ink);
+  --chart-4: var(--line);
+  --chart-5: var(--thermal-crimson);
+  --radius: 0px;
+  --sidebar: var(--paper-bright);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--paper-bright);
+  --sidebar-accent: var(--paper-sunk);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line-light);
+  --sidebar-ring: var(--ink-soft);
+}
+
+/* ───────────────────────────────────────────────────── thermal night mode ──
+   Not "the same page but dark". This is the same campus seen through the
+   imaging sensor at night: the ground goes almost black, and the signal —
+   the only thing that was ever emitting — gets brighter.                    */
+
+.dark {
+  --paper:        #11110F;
+  --paper-bright: #181714;
+  --paper-sunk:   #0C0C0A;
+  --ink:          #F1EFE8;
+  --ink-soft:     #C8C5BC;
+  --muted:        #8B8880;
+  --line:         #3A3833;
+  --line-light:   #2A2925;
+
+  --thermal-red:     #FF4526;
+  --thermal-crimson: #D8262C;
+  --thermal-orange:  #FF6533;
+  --thermal-amber:   #FFA02A;
+  --thermal-yellow:  #FFE066;
+  --thermal-hot:     #FFF8D2;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-bright);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-bright);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper-bright);
+  --secondary-foreground: var(--ink);
+  --muted-foreground: var(--muted);
+  --accent: var(--paper-bright);
+  --accent-foreground: var(--ink);
+  --destructive: var(--thermal-red);
+  --border: var(--line-light);
+  --input: var(--line);
+  --ring: var(--ink-soft);
+  --sidebar: var(--paper-bright);
+  --sidebar-foreground: var(--ink);
+  --sidebar-border: var(--line-light);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THERMAL RAMP — eight stops, cold to incandescent
+
+   t0 is not "a little heat". It is the ABSENCE of heat and must stay
+   chromatically dead: the moment t0 has a tint, every healthy block on campus
+   starts looking mildly sick.
+
+   Each stop carries three faces because blocks render as extruded geometry:
+   top is lit, right is turned away, left is in shadow. Keeping the three in
+   the token rather than in a filter is what makes the map read as a physical
+   model rather than a tinted diagram.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* t0 — cold. No signal at all. */
+  --t0-top:   #E6E5E0;  --t0-right: #D3D2CC;  --t0-left:  #BFBEB7;
+  /* t1 — below baseline. Still achromatic, just brighter. */
+  --t1-top:   #EFEEE9;  --t1-right: #DCDBD4;  --t1-left:  #C8C7BF;
+  /* t2 — yellow. First measurable lift. */
+  --t2-top:   #FFDF72;  --t2-right: #EDC63C;  --t2-left:  #D2A81F;
+  /* t3 — amber. WATCH anchor. */
+  --t3-top:   #FFA733;  --t3-right: #F08A00;  --t3-left:  #C97100;
+  /* t4 — orange. */
+  --t4-top:   #FA7A45;  --t4-right: #F4511E;  --t4-left:  #C93F13;
+  /* t5 — red. ELEVATED anchor. */
+  --t5-top:   #F5492F;  --t5-right: #DC2A14;  --t5-left:  #B32110;
+  /* t6 — deep red. */
+  --t6-top:   #D9291D;  --t6-right: #B51F24;  --t6-left:  #91161C;
+  /* t7 — crimson core. CRITICAL anchor. Dense rather than bright: the eye
+     reads a dark saturated mass with an incandescent rim as hotter than any
+     further red would be, which is exactly how thermal imagery behaves. */
+  --t7-top:   #B51F24;  --t7-right: #8E1820;  --t7-left:  #6B121A;
+
+  /* The white-hot boundary between hot and cold ground. A 1px stroke or a
+     small core on anything above watch — never a fill. */
+  --thermal-rim:   #FFF1A8;
+  --thermal-ember: #F4511E;
+
+  /* Cold ground the geometry sits on. Neutral by law. */
+  --thermal-ground:      #EDECE7;
+  --thermal-ground-edge: #DFDED8;
+  --thermal-grid:        #D6D5D0;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --t0-top:   #26251F;  --t0-right: #1D1C18;  --t0-left:  #151411;
+  --t1-top:   #302E27;  --t1-right: #26241E;  --t1-left:  #1B1A16;
+  --t2-top:   #FFE066;  --t2-right: #E8C33A;  --t2-left:  #C9A522;
+  --t3-top:   #FFB44D;  --t3-right: #FF8A00;  --t3-left:  #D97300;
+  --t4-top:   #FF8B57;  --t4-right: #FF6533;  --t4-left:  #D24A18;
+  --t5-top:   #FF5C3D;  --t5-right: #F22D16;  --t5-left:  #C42413;
+  --t6-top:   #EE3226;  --t6-right: #C82228;  --t6-left:  #A01820;
+  --t7-top:   #C92329;  --t7-right: #9E1A21;  --t7-left:  #78131A;
+
+  --thermal-rim:   #FFF8D2;
+  --thermal-ember: #FF6533;
+
+  --thermal-ground:      #171613;
+  --thermal-ground-edge: #100F0D;
+  --thermal-grid:        #2A2924;
 }
+
+/* ═════════════════════════════════════════════════════════════════ base ══ */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   html, body {
-    font-family: var(--font-sans), 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-    text-rendering: geometricPrecision;
-    -webkit-font-smoothing: subpixel-antialiased;
-    -moz-osx-font-smoothing: auto;
-    letter-spacing: -0.012em;
+    font-family: var(--font-sans), Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss02", "kern", "liga";
+    background: var(--paper);
+    color: var(--ink);
+    font-feature-settings: "kern", "liga", "cv05", "ss01";
   }
 
-  /* Soft Ambient Occlusion Typography & Card Depth */
-  h1, h2, h3, .font-heading {
-    text-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.05), 0 2px 5px rgba(0, 0, 0, 0.02);
+  /* Editorial hierarchy comes from size and weight contrast — never from
+     colour, and never from a shadow. */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.028em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: var(--ink);
+    color: var(--paper-bright);
   }
 }
 
-/* Ambient Occlusion & Tactile Depth Utilities */
-.text-ao {
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
+/* ══════════════════════════════════════════════════════════ typography ══ */
+
+.display {
+  font-weight: 800;
+  letter-spacing: -0.042em;
+  line-height: 0.92;
+  text-transform: uppercase;
 }
 
-.text-ao-subtle {
-  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.04);
+/* Section eyebrow — 02 / OUTBREAK RADAR */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.text-ao-dark {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.6);
+/* Metadata that belongs to an instrument rather than to a sentence. */
+.meta {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.shadow-ao-card {
-  box-shadow: 
-    0 1px 2px rgba(0, 0, 0, 0.02),
-    0 4px 12px rgba(0, 0, 0, 0.03),
-    0 16px 32px -4px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+/* A metric big enough to be a graphic object in its own right. */
+.numeral {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.86;
 }
 
-.shadow-ao-card-hover {
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+/* ═══════════════════════════════════════════════════════════ surfaces ══ */
+
+/* The default panel is deliberately boring. Data is what makes it interesting;
+   if a blank panel already looks exciting, a hot one has nowhere left to go. */
+.panel {
+  background: var(--paper-bright);
+  border: 1px solid var(--line-light);
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.shadow-ao-card-hover:hover {
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.03),
-    0 8px 24px rgba(0, 0, 0, 0.05),
-    0 24px 48px -6px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+.panel-sunk {
+  background: var(--paper-sunk);
+  border: 1px solid var(--line-light);
+  border-radius: 0;
+}
+
+.panel-hairline {
+  border: 1px solid var(--line-light);
+  border-radius: 0;
+}
+
+/* Rare and powerful. A solid thermal block is reserved for a state a human has
+   to act on — never for emphasis, never for a heading. */
+.panel-critical {
+  background: var(--thermal-red);
+  color: #FFFFFF;
+  border: 1px solid var(--thermal-red);
+  border-radius: 0;
+}
+
+.panel-interactive {
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+.panel-interactive:hover {
+  border-color: var(--line);
   transform: translateY(-1px);
 }
 
-.shadow-ao-button {
-  box-shadow: 
-    0 1px 2px rgba(0, 0, 0, 0.15),
-    0 2px 6px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-/* ═══════════════════════════════════════════════════════════════════════════
-   NEUMORPHIC SURFACE SYSTEM
-
-   Two surfaces only: raised (sits above the page) and inset (pressed into it).
-   The page itself is a very slightly warm off-white, because pure #fff gives
-   a raised shadow nothing to sit on and the whole effect collapses.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-:root {
-  --neu-bg: #eef1f6;
-  --neu-surface: #f4f6fa;
-  --neu-light: rgba(255, 255, 255, 0.9);
-  --neu-dark: rgba(163, 177, 198, 0.42);
-  --neu-dark-soft: rgba(163, 177, 198, 0.26);
-}
-
-.neu-page {
-  background: var(--neu-bg);
-  background-image:
-    radial-gradient(at 8% 0%, rgba(255, 255, 255, 0.7) 0px, transparent 55%),
-    radial-gradient(at 92% 100%, rgba(206, 216, 232, 0.5) 0px, transparent 55%);
+/* Page ground. Two barely-there thermal fields plus grain, so the paper does
+   not read as a flat digital rectangle. The user should register this before
+   they consciously notice it. */
+.paper-page {
+  background:
+    radial-gradient(ellipse 60% 45% at 78% 6%,  color-mix(in srgb, var(--thermal-amber) 7%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 10% 94%, color-mix(in srgb, var(--thermal-red) 5%, transparent), transparent 70%),
+    var(--paper);
   background-attachment: fixed;
 }
 
-.neu-raised {
-  background: var(--neu-surface);
+/* 1–3% grain. Enough to kill the sterility, never enough to read as texture. */
+.paper-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark .paper-grain::before { opacity: 0.055; }
+
+/* The editorial container. */
+.editorial {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 4vw, 64px);
+}
+
+/* A hard horizontal rule is how one section ends and the next begins. It does
+   more work than any amount of vertical padding. */
+.rule       { border-top: 1px solid var(--line-light); }
+.rule-heavy { border-top: 1px solid var(--ink); }
+
+/* ═════════════════════════════════════════════════════════ heat fields ══ */
+
+/* The diffuse field under a hotspot. Large radius, low opacity, no hard edge
+   anywhere — heat radiating through a sensor, not an LED. */
+.heat-field {
+  position: absolute;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--thermal-hot) 85%, transparent) 0%,
+    color-mix(in srgb, var(--thermal-amber) 78%, transparent) 18%,
+    color-mix(in srgb, var(--thermal-red) 62%, transparent) 42%,
+    color-mix(in srgb, var(--thermal-crimson) 28%, transparent) 64%,
+    transparent 76%
+  );
+  filter: blur(14px);
+}
+
+/* The atmospheric bloom around a field. Broad and weak. */
+.heat-bloom {
+  position: absolute;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--thermal-orange) 26%, transparent),
+    color-mix(in srgb, var(--thermal-orange) 7%, transparent) 45%,
+    transparent 75%
+  );
+  filter: blur(22px);
+}
+
+/* Panels that have gone hot. The border carries the state and the glow is a
+   whisper behind it. Never a filled card — a wall of red destroys the contrast
+   that makes the map legible in the first place. */
+.thermal-glow-watch {
+  border-color: color-mix(in srgb, var(--thermal-amber) 55%, var(--line-light));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--thermal-amber) 16%, transparent);
+}
+.thermal-glow-elevated {
+  border-color: color-mix(in srgb, var(--thermal-orange) 65%, var(--line-light));
   box-shadow:
-    6px 6px 14px var(--neu-dark),
-    -6px -6px 14px var(--neu-light);
+    inset 0 0 0 1px color-mix(in srgb, var(--thermal-orange) 20%, transparent),
+    0 0 34px -14px var(--thermal-orange);
 }
-
-.neu-raised-sm {
-  background: var(--neu-surface);
+.thermal-glow-critical {
+  border-color: var(--thermal-red);
   box-shadow:
-    3px 3px 7px var(--neu-dark-soft),
-    -3px -3px 7px var(--neu-light);
+    inset 0 0 0 1px color-mix(in srgb, var(--thermal-red) 26%, transparent),
+    0 0 44px -12px color-mix(in srgb, var(--thermal-red) 70%, transparent);
 }
 
-.neu-inset {
-  background: var(--neu-bg);
-  box-shadow:
-    inset 5px 5px 10px var(--neu-dark),
-    inset -5px -5px 10px var(--neu-light);
+.thermal-rim {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--thermal-rim) 70%, transparent);
 }
 
-.neu-inset-sm {
-  background: var(--neu-bg);
-  box-shadow:
-    inset 2px 2px 5px var(--neu-dark-soft),
-    inset -2px -2px 5px var(--neu-light);
+/* Tilt-shift. The reference art gets its depth from a shallow focal plane: the
+   near and far edges fall out of focus and the eye is forced to the middle.
+   Container only — never text. */
+.thermal-dof {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 5%, #000 22%, #000 78%, rgba(0,0,0,0.4) 95%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 5%, #000 22%, #000 78%, rgba(0,0,0,0.4) 95%, transparent 100%);
 }
 
-/* Press physics: raised surfaces sink when you push them. */
-.neu-press {
-  transition:
-    box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+/* ═══════════════════════════════════════════════════════════════ motion ══ */
+
+/* Animation communicates physical state. Heat expands, signal diffuses, a scan
+   passes over. Nothing bounces and nothing flies in from the left. */
+
+@keyframes thermal-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.88; transform: scale(1.035); }
 }
-.neu-press:hover {
-  box-shadow:
-    8px 8px 18px var(--neu-dark),
-    -8px -8px 18px var(--neu-light);
-  transform: translateY(-1px);
+/* 5.5s, not 1s. A hotspot that pulses quickly reads as a notification badge;
+   one that breathes slowly reads as something physically radiating. */
+.thermal-breathe { animation: thermal-breathe 5.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@keyframes thermal-scan {
+  0%   { transform: translateY(-14%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(114%); opacity: 0; }
 }
-.neu-press:active {
-  box-shadow:
-    inset 4px 4px 9px var(--neu-dark),
-    inset -4px -4px 9px var(--neu-light);
-  transform: translateY(0);
+.thermal-scan { animation: thermal-scan 13s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.28; }
 }
+.live-pulse { animation: live-pulse 2.5s ease-in-out infinite; }
 
-/* ── Risk accents ─────────────────────────────────────────────────────────
-   Warm colour appears only where students are ill. Everything structural
-   stays neutral, so a glance at the screen reads danger immediately.       */
-
-.neu-glow-critical { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(239, 68, 68, 0.25), 0 0 28px -6px rgba(239, 68, 68, 0.5); }
-.neu-glow-elevated { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(249, 115, 22, 0.22), 0 0 24px -8px rgba(249, 115, 22, 0.42); }
-.neu-glow-watch    { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(245, 158, 11, 0.2); }
-.neu-glow-normal   { box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light), 0 0 0 1px rgba(16, 185, 129, 0.18); }
-
-/* ── Motion ─────────────────────────────────────────────────────────────── */
-
-@keyframes neu-rise {
-  from { opacity: 0; transform: translateY(14px); }
+/* Page load resolves in strata: layout, then geometry, then heat, then
+   metadata. Everything fading in at once tells the user nothing. */
+@keyframes resolve-in {
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-rise { animation: neu-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-rise { animation: resolve-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-@keyframes neu-pulse-ring {
-  0%   { transform: scale(0.82); opacity: 0.75; }
-  70%  { transform: scale(2.4);  opacity: 0; }
-  100% { transform: scale(2.4);  opacity: 0; }
+@keyframes heat-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-.animate-pulse-ring { animation: neu-pulse-ring 2.6s cubic-bezier(0.24, 0, 0.38, 1) infinite; }
+.animate-heat { animation: heat-in 1.2s ease-out both; }
 
-@keyframes neu-sweep {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-.animate-sweep { animation: neu-sweep 7s linear infinite; transform-origin: center; }
+.stagger-1 { animation-delay: 0.06s; }
+.stagger-2 { animation-delay: 0.12s; }
+.stagger-3 { animation-delay: 0.18s; }
+.stagger-4 { animation-delay: 0.24s; }
+.stagger-5 { animation-delay: 0.30s; }
+.stagger-6 { animation-delay: 0.36s; }
 
-@keyframes neu-breathe {
-  0%, 100% { opacity: 0.55; }
-  50%      { opacity: 1; }
-}
-.animate-breathe { animation: neu-breathe 3.2s ease-in-out infinite; }
-
-@keyframes neu-shimmer {
+@keyframes shimmer-line {
   from { background-position: -220% 0; }
   to   { background-position: 220% 0; }
 }
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.75) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--line) 40%, transparent) 50%, transparent 100%);
   background-size: 220% 100%;
-  animation: neu-shimmer 2.1s ease-in-out infinite;
+  animation: shimmer-line 2.1s ease-in-out infinite;
 }
 
-@keyframes count-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes pulse-ring {
+  0%   { transform: scale(0.9); opacity: 0.6; }
+  70%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
-.animate-count { animation: count-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-pulse-ring { animation: pulse-ring 3.4s cubic-bezier(0.24, 0, 0.38, 1) infinite; }
 
-/* Stagger helpers so lists cascade instead of appearing all at once. */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.10s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.20s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.30s; }
+.animate-count { animation: resolve-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise, .animate-pulse-ring, .animate-sweep,
-  .animate-breathe, .animate-shimmer, .animate-count {
+  .thermal-breathe, .thermal-scan, .live-pulse, .animate-rise,
+  .animate-heat, .animate-shimmer, .animate-pulse-ring, .animate-count {
     animation: none;
   }
-  .neu-press { transition: none; }
+  .thermal-breathe { opacity: 0.8; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   THERMAL SYSTEM
+/* ═══════════════════════════════════════════════════ legacy compatibility ══
+   The build shipped a neumorphic layer before this system existed. Rather than
+   leave nineteen screens half-migrated for an afternoon, the old class names
+   are re-pointed at their editorial equivalents. A screen rebuilt against
+   .panel looks identical to one still asking for .neu-raised, so migration can
+   happen file by file with no broken intermediate state.
 
-   The one visual idea in this product: a cold campus is neutral and quiet,
-   and heat exists ONLY where students are ill. Everything below is that ramp.
+   Do not use these in new code.                                             */
 
-   Read docs/CLAUDE-DESIGN.md before changing a value here. These tokens are a
-   contract — the map, the badges, the epi curve and the landing hero all read
-   from them, so a nudge here moves four surfaces at once.
+.neu-page      { background: var(--paper); }
+.neu-raised,
+.neu-raised-sm { background: var(--paper-bright); border: 1px solid var(--line-light); box-shadow: none; }
+.neu-inset,
+.neu-inset-sm  { background: var(--paper-sunk); border: 1px solid var(--line-light); box-shadow: none; }
+.neu-press     { transition: border-color 160ms ease, transform 160ms ease; }
+.neu-press:hover  { border-color: var(--line); transform: translateY(-1px); }
+.neu-press:active { transform: translateY(0); }
+.neu-glow-critical { border-color: var(--thermal-red); }
+.neu-glow-elevated { border-color: var(--thermal-orange); }
+.neu-glow-watch    { border-color: var(--thermal-amber); }
+.neu-glow-normal   { border-color: var(--line-light); }
 
-   Eight stops, cold to incandescent. t0 is not "low heat", it is ABSENCE of
-   heat and must stay chromatically dead — the moment t0 has a tint, every
-   healthy block on campus starts looking mildly sick.
+:root { --neu-bg: var(--paper); --neu-surface: var(--paper-bright); }
 
-   Each stop carries three faces because blocks render as extruded voxels:
-   top is lit, right is turned away, left is in shadow.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-:root {
-  /* t0 — cold. Absence of signal. */
-  --t0-top:   oklch(0.940 0.012 200);
-  --t0-right: oklch(0.880 0.014 205);
-  --t0-left:  oklch(0.820 0.016 210);
-
-  /* t1 — teal. Below baseline, actively reassuring. */
-  --t1-top:   oklch(0.900 0.090 168);
-  --t1-right: oklch(0.830 0.085 168);
-  --t1-left:  oklch(0.750 0.078 170);
-
-  /* t2 — chartreuse. First measurable lift. */
-  --t2-top:   oklch(0.920 0.140 108);
-  --t2-right: oklch(0.850 0.135 105);
-  --t2-left:  oklch(0.770 0.125 102);
-
-  /* t3 — amber. WATCH anchor. */
-  --t3-top:   oklch(0.870 0.160 82);
-  --t3-right: oklch(0.790 0.155 76);
-  --t3-left:  oklch(0.700 0.145 70);
-
-  /* t4 — orange. */
-  --t4-top:   oklch(0.790 0.185 55);
-  --t4-right: oklch(0.700 0.180 48);
-  --t4-left:  oklch(0.610 0.170 42);
-
-  /* t5 — red-orange. ELEVATED anchor. */
-  --t5-top:   oklch(0.680 0.205 33);
-  --t5-right: oklch(0.590 0.200 28);
-  --t5-left:  oklch(0.500 0.185 25);
-
-  /* t6 — deep red. */
-  --t6-top:   oklch(0.550 0.195 15);
-  --t6-right: oklch(0.460 0.180 12);
-  --t6-left:  oklch(0.380 0.160 10);
-
-  /* t7 — ember core. CRITICAL anchor. Darkest, not brightest: the hottest
-     cubes in a real thermal render go black-magenta, and that reads as
-     "burnt" far faster than another red would. */
-  --t7-top:   oklch(0.420 0.155 358);
-  --t7-right: oklch(0.340 0.140 355);
-  --t7-left:  oklch(0.270 0.120 352);
-
-  /* Incandescent rim. The white-hot boundary between hot and cold ground.
-     Used as a 1px stroke on any block above watch, never as a fill. */
-  --thermal-rim:   oklch(0.985 0.055 88);
-  --thermal-ember: oklch(0.700 0.210 40);
-
-  /* Cold ground the voxels sit on. Neutral by law. */
-  --thermal-ground:      oklch(0.955 0.004 230);
-  --thermal-ground-edge: oklch(0.905 0.008 230);
-  --thermal-grid:        oklch(0.870 0.010 230);
+/* Leaflet has opinions about corners and shadows. It does not get to keep
+   them here. */
+.leaflet-container { background: var(--paper-sunk) !important; font-family: inherit !important; }
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--paper) 82%, transparent) !important;
+  color: var(--muted) !important;
+  font-size: 9px !important;
+  border-radius: 0 !important;
 }
-
-.dark {
-  --t0-top:   oklch(0.330 0.010 230);
-  --t0-right: oklch(0.275 0.012 232);
-  --t0-left:  oklch(0.225 0.012 234);
-
-  --t1-top:   oklch(0.720 0.110 168);
-  --t1-right: oklch(0.630 0.100 168);
-  --t1-left:  oklch(0.540 0.090 170);
-
-  --t2-top:   oklch(0.850 0.160 108);
-  --t2-right: oklch(0.760 0.150 105);
-  --t2-left:  oklch(0.670 0.138 102);
-
-  --t3-top:   oklch(0.830 0.175 82);
-  --t3-right: oklch(0.740 0.168 76);
-  --t3-left:  oklch(0.650 0.155 70);
-
-  --t4-top:   oklch(0.760 0.200 55);
-  --t4-right: oklch(0.670 0.192 48);
-  --t4-left:  oklch(0.580 0.180 42);
-
-  --t5-top:   oklch(0.665 0.220 33);
-  --t5-right: oklch(0.575 0.212 28);
-  --t5-left:  oklch(0.485 0.196 25);
-
-  --t6-top:   oklch(0.545 0.210 15);
-  --t6-right: oklch(0.455 0.192 12);
-  --t6-left:  oklch(0.370 0.170 10);
-
-  --t7-top:   oklch(0.415 0.170 358);
-  --t7-right: oklch(0.335 0.152 355);
-  --t7-left:  oklch(0.265 0.130 352);
-
-  --thermal-rim:   oklch(0.980 0.070 88);
-  --thermal-ember: oklch(0.720 0.225 40);
-
-  --thermal-ground:      oklch(0.205 0.006 230);
-  --thermal-ground-edge: oklch(0.165 0.008 230);
-  --thermal-grid:        oklch(0.265 0.010 230);
+.leaflet-control-attribution a { color: var(--muted) !important; }
+.leaflet-tooltip {
+  background: var(--ink) !important;
+  color: var(--paper-bright) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  padding: 6px 9px !important;
 }
-
-/* ── Thermal glow ─────────────────────────────────────────────────────────
-   Sits on top of neu-raised rather than replacing it, so a hot card keeps
-   its physical shadow and gains heat instead of swapping one for the other. */
-
-.thermal-glow-watch {
-  box-shadow:
-    6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light),
-    0 0 0 1px color-mix(in oklch, var(--t3-top) 40%, transparent);
-}
-.thermal-glow-elevated {
-  box-shadow:
-    6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light),
-    0 0 0 1px color-mix(in oklch, var(--t5-top) 45%, transparent),
-    0 0 26px -8px var(--t5-top);
-}
-.thermal-glow-critical {
-  box-shadow:
-    6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light),
-    0 0 0 1px color-mix(in oklch, var(--thermal-ember) 55%, transparent),
-    0 0 34px -6px var(--thermal-ember),
-    0 0 64px -18px var(--t6-top);
-}
-
-/* Incandescent hairline for the hot/cold boundary. */
-.thermal-rim {
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--thermal-rim) 70%, transparent);
-}
-
-/* Tilt-shift. The reference art gets its depth from a shallow focal plane:
-   the near and far edges of the field fall out of focus and the eye is
-   forced to the middle. Apply to the map container, never to text. */
-.thermal-dof {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%, rgba(0,0,0,0.35) 6%, #000 26%,
-    #000 74%, rgba(0,0,0,0.35) 94%, transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%, rgba(0,0,0,0.35) 6%, #000 26%,
-    #000 74%, rgba(0,0,0,0.35) 94%, transparent 100%
-  );
-}
-.thermal-dof-far  { filter: blur(1.6px) saturate(0.88); opacity: 0.82; }
-.thermal-dof-near { filter: blur(1.1px) saturate(0.94); opacity: 0.88; }
-
-/* Slow thermal breathing. Distinct from animate-pulse-ring, which is a
-   discrete alarm; this is ambient and belongs to sustained heat. */
-@keyframes thermal-breathe {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50%      { opacity: 0.95; transform: scale(1.045); }
-}
-.thermal-breathe { animation: thermal-breathe 3.4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-  .thermal-breathe { animation: none; opacity: 0.8; }
-  .thermal-dof-far, .thermal-dof-near { filter: none; }
+.leaflet-tooltip::before { display: none !important; }
+.leaflet-bar a {
+  border-radius: 0 !important;
+  background: var(--paper-bright) !important;
+  color: var(--ink) !important;
+  border-color: var(--line-light) !important;
 }

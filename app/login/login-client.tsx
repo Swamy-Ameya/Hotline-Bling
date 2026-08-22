@@ -1,12 +1,63 @@
 'use client';
 
+/**
+ * Sign-in.
+ *
+ * Split down the middle: the campus on the left as a still thermal field, the
+ * form on the right. It is the first screen anyone sees, so it has to
+ * establish the visual language before the app gets data-heavy — paper, thin
+ * rules, one accent, and heat only where illness is.
+ *
+ * There is no real auth here and the deck says so out loud (CLAUDE.md §10).
+ * The demo credentials are printed on the page rather than hidden, because
+ * pretending otherwise during a demo wastes everyone's time.
+ */
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, Stethoscope, User, Lock, ArrowRight, Sparkles, Building, ArrowLeft } from 'lucide-react';
-import { Surface, NeuButton, Spinner } from '@/components/neu';
+import { NeuButton, Spinner } from '@/components/neu';
+import { cn } from '@/lib/utils';
 
 type Role = 'student' | 'doctor' | 'warden';
+
+const ROLES: {
+  role: Role;
+  label: string;
+  identifier: string;
+  pin: string;
+  who: string;
+  path: string;
+  does: string;
+}[] = [
+  {
+    role: 'student',
+    label: 'Student',
+    identifier: '2502050001',
+    pin: '1234',
+    who: 'Ishaan Reddy · Block B1, room 101',
+    path: '/app',
+    does: 'Report symptoms in thirty seconds and receive advisories addressed to your floor.',
+  },
+  {
+    role: 'doctor',
+    label: 'Doctor',
+    identifier: 'health.centre@muj.ac.in',
+    pin: '4321',
+    who: 'Dr Meenakshi Rao · Campus Health Centre',
+    path: '/doctor',
+    does: 'Record a consultation once; block, floor and room come from the roster.',
+  },
+  {
+    role: 'warden',
+    label: 'Warden',
+    identifier: 'warden.b4@muj.ac.in',
+    pin: '4321',
+    who: 'Block B4 warden console',
+    path: '/radar',
+    does: 'See the campus field, and decide whether an advisory goes out.',
+  },
+];
 
 export function LoginClient() {
   const router = useRouter();
@@ -16,226 +67,186 @@ export function LoginClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRoleSelect = (newRole: Role) => {
-    setRole(newRole);
-    setError(null);
-    if (newRole === 'student') {
-      setIdentifier('2502050001');
-      setPin('1234');
-    } else if (newRole === 'doctor') {
-      setIdentifier('health.centre@muj.ac.in');
-      setPin('4321');
-    } else if (newRole === 'warden') {
-      setIdentifier('warden.b4@muj.ac.in');
-      setPin('4321');
-    }
-  };
+  const activeRole = ROLES.find((r) => r.role === role)!;
 
-  const handleSubmit = async (e?: React.FormEvent, customIdent?: string, customPin?: string, customRole?: Role) => {
-    if (e) e.preventDefault();
+  function pick(next: Role) {
+    const entry = ROLES.find((r) => r.role === next)!;
+    setRole(next);
+    setIdentifier(entry.identifier);
+    setPin(entry.pin);
+    setError(null);
+  }
+
+  async function submit(
+    e?: React.FormEvent,
+    override?: { role: Role; identifier: string; pin: string },
+  ) {
+    e?.preventDefault();
     setLoading(true);
     setError(null);
 
-    const activeRole = customRole ?? role;
-    const activeIdent = customIdent ?? identifier;
-    const activePin = customPin ?? pin;
+    const r = override?.role ?? role;
+    const ident = override?.identifier ?? identifier;
+    const code = override?.pin ?? pin;
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: activeRole,
-          identifier: activeIdent,
-          pin: activePin,
-        }),
+        body: JSON.stringify({ role: r, identifier: ident, pin: code }),
       });
-
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Sign-in failed');
 
-      if (activeRole === 'student') {
-        router.push('/app');
-      } else if (activeRole === 'doctor') {
-        router.push('/doctor');
-      } else {
-        router.push('/radar');
-      }
+      router.push(ROLES.find((x) => x.role === r)!.path);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Sign-in failed');
       setLoading(false);
     }
-  };
-
-  const quickLogin = (qRole: Role, qIdent: string, qPin: string) => {
-    setRole(qRole);
-    setIdentifier(qIdent);
-    setPin(qPin);
-    handleSubmit(undefined, qIdent, qPin, qRole);
-  };
+  }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-12">
-      <div className="mb-6 flex justify-between items-center">
-        <Link
-          href="/radar"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900"
-        >
-          <ArrowLeft className="size-3.5" /> Back to Dashboard
-        </Link>
-      </div>
+    <div className="paper-page paper-grain min-h-screen">
+      <div className="editorial grid min-h-screen gap-0 lg:grid-cols-2">
+        {/* ── left: identity ──────────────────────────────────────────── */}
+        <div className="relative flex flex-col justify-between py-10 lg:pr-16">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5">
+              <span className="block size-2 bg-thermal-red" />
+              <span className="text-[13px] font-bold uppercase tracking-[0.14em] text-ink">
+                Outbreak Radar
+              </span>
+            </Link>
+            <Link href="/radar" className="meta transition-colors hover:text-ink">
+              Skip to dashboard →
+            </Link>
+          </div>
 
-      <div className="text-center mb-8">
-        <div className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl neu-inset text-slate-700">
-          <Shield className="size-6" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Outbreak Radar</h1>
-        <p className="mt-1 text-sm text-slate-500">Sign in to access hostel surveillance & health reporting</p>
-      </div>
+          <div className="py-16">
+            <span className="eyebrow">Manipal University Jaipur</span>
+            <h1 className="mt-6 display text-[clamp(2.4rem,5.4vw,4rem)] text-ink">
+              One campus.
+              <br />
+              Many signals.
+              <br />
+              <span className="text-thermal-red">One live map.</span>
+            </h1>
+            <p className="mt-7 max-w-md text-[14px] leading-[1.65] text-ink-soft">
+              Three people see three different halves of the same outbreak — a doctor, a warden and
+              the students themselves. Sign in as any of them.
+            </p>
+          </div>
 
-      {/* Role Picker Tabs */}
-      <div className="mb-6 grid grid-cols-3 gap-2 rounded-2xl neu-inset p-1.5">
-        <button
-          type="button"
-          onClick={() => handleRoleSelect('student')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            role === 'student'
-              ? 'neu-raised text-slate-900 bg-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <User className="size-3.5" />
-          Student
-        </button>
-        <button
-          type="button"
-          onClick={() => handleRoleSelect('doctor')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            role === 'doctor'
-              ? 'neu-raised text-slate-900 bg-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Stethoscope className="size-3.5" />
-          Doctor
-        </button>
-        <button
-          type="button"
-          onClick={() => handleRoleSelect('warden')}
-          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all ${
-            role === 'warden'
-              ? 'neu-raised text-slate-900 bg-white shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Building className="size-3.5" />
-          Warden
-        </button>
-      </div>
-
-      <Surface className="p-7">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-              {role === 'student' ? 'Registration Number' : 'Email Address'}
-            </label>
-            <input
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder={role === 'student' ? 'e.g. 2502050001' : 'e.g. health.centre@muj.ac.in'}
-              className="w-full rounded-xl neu-inset px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-slate-400 font-mono"
-              required
+          {/* A still thermal field. The same gradient language as the map, at
+              rest, so the login screen belongs to the same instrument. */}
+          <div className="relative hidden h-40 overflow-hidden border border-line-light lg:block">
+            <div
+              className="heat-field thermal-breathe"
+              style={{ left: '18%', top: '10%', width: 200, height: 120 }}
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-              PIN Code
-            </label>
-            <div className="relative">
-              <input
-                type="password"
-                maxLength={4}
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="4-digit PIN"
-                className="w-full rounded-xl neu-inset px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-slate-400 font-mono tracking-widest"
-                required
-              />
-              <Lock className="absolute right-3.5 top-3.5 size-4 text-slate-400" />
+            <div
+              className="heat-field"
+              style={{ left: '58%', top: '38%', width: 130, height: 80, opacity: 0.5 }}
+            />
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-paper-bright/85 px-4 py-2 backdrop-blur-sm">
+              <span className="meta">Campus field · illustrative</span>
+              <span className="meta">19 blocks · 2 messes · 1 RO plant</span>
             </div>
-            <span className="mt-1 block text-[11px] text-slate-400">
-              Demo PIN: {role === 'student' ? '1234' : '4321'}
-            </span>
-          </div>
-
-          {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700">
-              {error}
-            </div>
-          )}
-
-          <NeuButton
-            type="submit"
-            variant="primary"
-            disabled={loading}
-            className="w-full mt-2 flex items-center justify-center gap-2 py-3 text-sm"
-          >
-            {loading ? <Spinner /> : <>Sign In <ArrowRight className="size-4" /></>}
-          </NeuButton>
-        </form>
-
-        <div className="mt-6 pt-5 border-t border-slate-200/60">
-          <div className="flex items-center gap-1.5 mb-3 text-xs font-semibold text-slate-500">
-            <Sparkles className="size-3.5 text-amber-500" />
-            <span>One-Tap Demo Credentials</span>
-          </div>
-          <div className="grid gap-2">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => quickLogin('student', '2502050001', '1234')}
-              className="flex items-center justify-between rounded-xl neu-inset-sm px-3.5 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              <div>
-                <span className="font-bold text-slate-900 block">🎓 Demo Student</span>
-                <span className="text-[11px] text-slate-400 font-mono">2502050001 (Ishaan Reddy · B1)</span>
-              </div>
-              <span className="text-xs text-indigo-600 font-semibold">Tap to enter /app →</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => quickLogin('doctor', 'health.centre@muj.ac.in', '4321')}
-              className="flex items-center justify-between rounded-xl neu-inset-sm px-3.5 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              <div>
-                <span className="font-bold text-slate-900 block">🩺 Demo Doctor</span>
-                <span className="text-[11px] text-slate-400">Dr. Meenakshi Rao (Health Centre)</span>
-              </div>
-              <span className="text-xs text-indigo-600 font-semibold">Tap to enter /doctor →</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => quickLogin('warden', 'warden.b4@muj.ac.in', '4321')}
-              className="flex items-center justify-between rounded-xl neu-inset-sm px-3.5 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              <div>
-                <span className="font-bold text-slate-900 block">🏢 Demo Warden</span>
-                <span className="text-[11px] text-slate-400">Warden — B4 (Critical Hotspot)</span>
-              </div>
-              <span className="text-xs text-indigo-600 font-semibold">Tap to enter /radar →</span>
-            </button>
           </div>
         </div>
-      </Surface>
+
+        {/* ── right: form ─────────────────────────────────────────────── */}
+        <div className="border-line-light py-10 lg:border-l lg:pl-16">
+          <div className="max-w-md">
+            <span className="eyebrow">Sign in</span>
+
+            {/* role picker — three square tabs, no pills */}
+            <div className="mt-5 grid grid-cols-3 gap-px bg-line-light">
+              {ROLES.map((r) => (
+                <button
+                  key={r.role}
+                  type="button"
+                  onClick={() => pick(r.role)}
+                  className={cn(
+                    'py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                    role === r.role
+                      ? 'bg-ink text-paper-bright'
+                      : 'bg-paper-bright text-muted-ink hover:text-ink',
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-4 text-[13px] leading-relaxed text-muted-ink">{activeRole.does}</p>
+
+            <form onSubmit={submit} className="mt-7 space-y-5">
+              <div>
+                <label className="meta">
+                  {role === 'student' ? 'Registration number' : 'Email address'}
+                </label>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="mt-2 w-full border border-line bg-paper-bright px-4 py-3 font-mono text-[13px] text-ink outline-none transition-colors placeholder:text-line focus:border-ink"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="meta">PIN</label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  className="mt-2 w-full border border-line bg-paper-bright px-4 py-3 font-mono text-[13px] tracking-[0.4em] text-ink outline-none transition-colors focus:border-ink"
+                  required
+                />
+                <span className="mt-2 block meta">
+                  Demo PIN {role === 'student' ? '1234' : '4321'}
+                </span>
+              </div>
+
+              {error && (
+                <div className="border-l-2 border-thermal-red bg-paper-bright px-4 py-2.5 text-[12px] text-thermal-red">
+                  {error}
+                </div>
+              )}
+
+              <NeuButton type="submit" variant="primary" disabled={loading} className="w-full py-3">
+                {loading ? <Spinner /> : 'Sign in'}
+              </NeuButton>
+            </form>
+
+            <div className="mt-10 border-t border-line-light pt-6">
+              <span className="meta">One-tap demo accounts</span>
+              <div className="mt-3">
+                {ROLES.map((r) => (
+                  <button
+                    key={r.role}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => submit(undefined, r)}
+                    className="flex w-full items-center justify-between border-b border-line-light py-3 text-left transition-colors hover:bg-paper-bright disabled:opacity-40"
+                  >
+                    <span>
+                      <span className="block text-[13px] font-semibold text-ink">{r.label}</span>
+                      <span className="block text-[11px] text-muted-ink">{r.who}</span>
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-ink">
+                      {r.path} →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

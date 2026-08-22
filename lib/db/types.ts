@@ -158,6 +158,16 @@ export interface AlertRow {
   sentAt: string | null;
   sentBy: string | null;
   recipients: number;
+  /** Several floors of one block. Additive — `floor` still handles the single case. */
+  floors?: number[] | null;
+  /**
+   * Addressed to the students who scanned into one sitting rather than to a
+   * place. A food cluster crosses blocks, so a block address would miss most
+   * of the people at risk and reach hundreds who are not.
+   */
+  mealId?: string | null;
+  /** How the recipients were chosen — rendered in the alert log. */
+  audience?: 'campus' | 'block' | 'floor' | 'meal';
 }
 
 export interface NotificationRow {

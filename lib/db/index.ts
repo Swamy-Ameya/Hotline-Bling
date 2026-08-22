@@ -315,20 +315,57 @@ export function listAlerts(): AlertRow[] {
   return [...getMockDb().alerts].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
 }
 
+/**
+ * Work out who an advisory is actually addressed to.
+ *
+ * Order matters: a meal cohort wins over a place, because a food cluster
+ * crosses blocks and addressing it by block would both miss most of the people
+ * at risk and reach hundreds who were never exposed.
+ */
+export function resolveAudience(input: {
+  blockId?: string | null;
+  floor?: number | null;
+  floors?: number[] | null;
+  mealId?: string | null;
+}): { studentIds: string[]; audience: NonNullable<AlertRow['audience']> } {
+  const db = getMockDb();
+
+  if (input.mealId) {
+    const attendees = getMealAttendees(input.mealId);
+    return { studentIds: [...attendees], audience: 'meal' };
+  }
+
+  const floors = input.floors && input.floors.length ? input.floors : null;
+
+  const matched = db.students.filter((s) => {
+    if (input.blockId && s.blockId !== input.blockId) return false;
+    if (floors) return s.floor != null && floors.includes(s.floor);
+    if (input.floor != null) return s.floor === input.floor;
+    return true;
+  });
+
+  const audience = !input.blockId
+    ? 'campus'
+    : floors || input.floor != null
+      ? 'floor'
+      : 'block';
+
+  return { studentIds: matched.map((s) => s.id), audience };
+}
+
 export function createAlert(input: {
   clusterId: string;
   blockId: string | null;
   floor: number | null;
+  floors?: number[] | null;
+  mealId?: string | null;
   title: string;
   body: string;
   sentBy?: string;
 }): AlertRow {
+  const { studentIds, audience } = resolveAudience(input);
   const db = getMockDb();
-  const matchingStudents = db.students.filter(
-    (s) =>
-      (input.blockId === null || s.blockId === input.blockId) &&
-      (input.floor === null || s.floor === input.floor),
-  );
+  const matchingStudents = db.students.filter((s) => studentIds.includes(s.id));
 
   const alertId = `alert-${Date.now()}`;
   const nowStr = new Date().toISOString();
@@ -339,6 +376,9 @@ export function createAlert(input: {
     state: 'sent',
     blockId: input.blockId,
     floor: input.floor,
+    floors: input.floors ?? null,
+    mealId: input.mealId ?? null,
+    audience,
     title: input.title,
     body: input.body,
     createdAt: nowStr,

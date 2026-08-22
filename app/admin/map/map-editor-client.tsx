@@ -2,9 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save, Copy, Check, MapPin, Layers } from 'lucide-react';
-import { Surface, NeuButton } from '@/components/neu';
-import { BLOCKS, MESSES, RO_PLANT } from '@/lib/domain/campus';
+import { NeuButton } from '@/components/neu';
+import { BLOCKS } from '@/lib/domain/campus';
 
 interface BlockCoord {
   id: string;
@@ -143,73 +142,67 @@ export function MapEditorClient() {
   const activeCoord = coords.find((c) => c.id === selectedBlockId);
 
   return (
-    <div className="mx-auto max-w-7xl px-6 pb-24 pt-8">
-      <div className="flex items-center justify-between mb-4">
-        <Link
-          href="/radar"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
-        >
-          <ArrowLeft className="size-4" /> Back to dashboard
+    <div className="editorial pb-24 pt-8">
+      <div className="flex items-baseline justify-between gap-4 border-b border-line-light pb-3">
+        <Link href="/radar" className="meta transition-colors hover:text-ink">
+          &larr; Campus radar
         </Link>
-
         <div className="flex items-center gap-2">
-          <NeuButton onClick={exportCode} className="flex items-center gap-1.5 text-xs py-2">
-            {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-            {copied ? 'Copied TS Snippet' : 'Export TS Code'}
+          <NeuButton onClick={exportCode}>
+            {copied ? 'Copied' : 'Export coordinates'}
           </NeuButton>
-
-          <NeuButton
-            variant="primary"
-            disabled={saving}
-            onClick={handleSave}
-            className="flex items-center gap-1.5 text-xs py-2"
-          >
-            {saved ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
-            {saved ? 'Saved Coordinates' : 'Save Coordinates'}
+          <NeuButton variant="primary" disabled={saving} onClick={handleSave}>
+            {saved ? 'Saved' : 'Save placement'}
           </NeuButton>
         </div>
       </div>
 
-      <Surface className="p-6 mb-5">
-        <h1 className="text-xl font-bold tracking-tight text-slate-800">Campus Satellite Placement Editor</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Calibrate ground-truth building coordinates on high-res Esri satellite tiles. Select a block from the chips below, then tap anywhere on the satellite image to place its exact location.
-        </p>
-
-        {/* Block Selector Chips */}
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {coords.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => setSelectedBlockId(b.id)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                selectedBlockId === b.id
-                  ? 'bg-slate-900 text-white shadow-sm scale-105'
-                  : 'neu-inset-sm text-slate-700 hover:text-slate-900'
-              }`}
-            >
-              Block {b.name}
-            </button>
-          ))}
+      <div className="grid gap-6 pt-8 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          <span className="eyebrow">Placement</span>
+          <h1 className="mt-3 display text-[clamp(1.8rem,3.6vw,2.6rem)] text-ink">
+            Where the buildings actually stand
+          </h1>
+          <p className="mt-4 max-w-xl text-[14px] leading-[1.6] text-muted-ink">
+            The map extrudes each block at its own coordinates, so those coordinates have to be
+            right. Pick a block, then click its roof on the satellite image. Everything downstream
+            &mdash; the heat fields, the supply lines, the floor stacks &mdash; follows from this.
+          </p>
         </div>
-      </Surface>
+      </div>
 
-      {/* Satellite Map Container */}
-      <Surface className="p-2 overflow-hidden h-[540px] relative">
-        <div ref={containerRef} className="w-full h-full rounded-xl" />
+      {/* Block selector */}
+      <div className="mt-8 flex flex-wrap gap-px bg-line-light p-px">
+        {coords.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            onClick={() => setSelectedBlockId(b.id)}
+            className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${
+              selectedBlockId === b.id
+                ? 'bg-ink text-paper-bright'
+                : 'bg-paper-bright text-muted-ink hover:text-ink'
+            }`}
+          >
+            {b.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative mt-5 h-[540px] border border-line-light">
+        <div ref={containerRef} className="h-full w-full" />
 
         {activeCoord && (
-          <div className="absolute top-4 left-4 z-[1000] rounded-xl bg-slate-900/90 px-3.5 py-2 text-white shadow backdrop-blur-md text-xs">
-            <div className="font-bold flex items-center gap-1.5">
-              <MapPin className="size-3.5 text-red-400" /> Active Placement: Block {activeCoord.name}
+          <div className="absolute left-4 top-4 z-[1000] border border-ink bg-ink px-3 py-2 text-paper-bright">
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em]">
+              Placing block {activeCoord.name}
             </div>
-            <div className="text-[11px] font-mono text-slate-300 mt-0.5">
-              Lat: {activeCoord.lat.toFixed(5)} · Lng: {activeCoord.lng.toFixed(5)}
+            <div className="mt-1 font-mono text-[10px] opacity-80">
+              {activeCoord.lat.toFixed(5)} · {activeCoord.lng.toFixed(5)}
             </div>
           </div>
         )}
-      </Surface>
+      </div>
     </div>
   );
 }

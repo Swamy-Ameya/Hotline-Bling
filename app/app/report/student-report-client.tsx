@@ -1,11 +1,24 @@
 'use client';
 
+/**
+ * The student self-report.
+ *
+ * Two steps, because a single long form on a phone gets abandoned halfway and
+ * a half-filled report is worth nothing. Step one is symptoms — the only
+ * genuinely required input. Step two is timing and meals, which is where the
+ * evidence that separates food from water actually comes from.
+ *
+ * Self-reports are weighted 0.4 against a doctor's 1.0. They are not weaker
+ * because students are unreliable; they are weaker because nobody examined the
+ * patient. What they buy is a day and a half of warning.
+ */
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ArrowRight, ArrowLeft, Send, Sparkles, Utensils, AlertCircle } from 'lucide-react';
-import { Surface, NeuButton, Spinner } from '@/components/neu';
+import { NeuButton, Spinner } from '@/components/neu';
 import { poolFor, POOLS, type PoolId } from '@/lib/domain/pools';
 import { SYMPTOM_LABEL, type Symptom, type MessMealRow } from '@/lib/db/types';
+import { cn } from '@/lib/utils';
 
 const SYMPTOM_GROUPS: { group: string; symptoms: Symptom[] }[] = [
   {
@@ -24,6 +37,13 @@ const SYMPTOM_GROUPS: { group: string; symptoms: Symptom[] }[] = [
     group: 'Skin & allergic',
     symptoms: ['rash', 'itching'],
   },
+];
+
+const ONSET_OPTIONS = [
+  { label: 'Just now', sub: 'under 2 h', hours: 2 },
+  { label: 'This morning', sub: '4–8 h', hours: 6 },
+  { label: 'Yesterday', sub: '~24 h', hours: 24 },
+  { label: 'Two days ago', sub: '~48 h', hours: 48 },
 ];
 
 interface StudentReportClientProps {
@@ -48,22 +68,18 @@ export function StudentReportClient({ student, recentMeals }: StudentReportClien
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggleSymptom = (s: Symptom) => {
-    setSymptoms((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
-    );
-  };
+  const toggleSymptom = (s: Symptom) =>
+    setSymptoms((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
-  const toggleMeal = (mealId: string) => {
+  const toggleMeal = (mealId: string) =>
     setSelectedMeals((prev) =>
       prev.includes(mealId) ? prev.filter((id) => id !== mealId) : [...prev, mealId],
     );
-  };
 
   const predictedPool: PoolId = poolFor(symptoms);
   const poolMeta = POOLS[predictedPool];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (symptoms.length === 0) {
       setError('Please select at least one symptom.');
@@ -89,9 +105,7 @@ export function StudentReportClient({ student, recentMeals }: StudentReportClien
       });
 
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Failed to submit report');
-      }
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to submit report');
 
       router.push('/app/pool');
       router.refresh();
@@ -99,91 +113,70 @@ export function StudentReportClient({ student, recentMeals }: StudentReportClien
       setError(err instanceof Error ? err.message : 'Error submitting report');
       setSubmitting(false);
     }
-  };
+  }
+
+  const choice = (on: boolean) =>
+    cn(
+      'min-h-[46px] px-3.5 py-2.5 text-left text-[12px] font-semibold transition-colors',
+      on ? 'bg-ink text-paper-bright' : 'bg-paper-bright text-ink-soft hover:text-ink',
+    );
 
   return (
-    <div className="space-y-5 animate-rise">
-      {/* Stepper Header */}
-      <Surface className="p-4 flex items-center justify-between">
+    <div className="animate-rise">
+      {/* ── step header ───────────────────────────────────────────────── */}
+      <div className="flex items-end justify-between border-b border-ink pb-3">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Step {step} of 2
-          </span>
-          <h1 className="text-base font-bold text-slate-800">
-            {step === 1 ? 'What symptoms do you have?' : 'Onset & Mess Meals'}
+          <span className="eyebrow">Step {step} of 2</span>
+          <h1 className="mt-1.5 text-[18px] font-bold tracking-[-0.02em] text-ink">
+            {step === 1 ? 'What symptoms do you have?' : 'When, and what did you eat?'}
           </h1>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`size-2.5 rounded-full ${
-              step >= 1 ? 'bg-indigo-600' : 'bg-slate-300'
-            }`}
-          />
-          <span
-            className={`size-2.5 rounded-full ${
-              step >= 2 ? 'bg-indigo-600' : 'bg-slate-300'
-            }`}
-          />
+        <div className="flex gap-1">
+          <span className={cn('h-1 w-8', step >= 1 ? 'bg-ink' : 'bg-line-light')} />
+          <span className={cn('h-1 w-8', step >= 2 ? 'bg-ink' : 'bg-line-light')} />
         </div>
-      </Surface>
-
-      {/* Auto-filled identity reminder */}
-      <div className="px-2 text-xs text-slate-500 flex items-center justify-between">
-        <span>
-          Reporting as: <strong className="text-slate-800">{student.name}</strong> ({student.registration}
-          {student.blockName ? ` · Block ${student.blockName}` : ''})
-        </span>
       </div>
 
+      <p className="mt-3 text-[11px] text-muted-ink">
+        Reporting as <strong className="font-semibold text-ink">{student.name}</strong> ·{' '}
+        <span className="font-mono">{student.registration}</span>
+        {student.blockName ? ` · Block ${student.blockName}` : ''}
+      </p>
+
       {step === 1 ? (
-        <Surface className="p-6 space-y-6">
+        <div className="mt-7 space-y-7">
           {SYMPTOM_GROUPS.map((group) => (
             <div key={group.group}>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
-                {group.group}
-              </h3>
-              <div className="grid grid-cols-2 gap-2.5">
-                {group.symptoms.map((s) => {
-                  const selected = symptoms.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => toggleSymptom(s)}
-                      className={`min-h-[48px] px-3.5 py-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between transition-all active:scale-95 ${
-                        selected
-                          ? 'bg-slate-900 text-white shadow-md'
-                          : 'neu-raised-sm text-slate-700 hover:text-slate-900'
-                      }`}
-                    >
-                      <span>{SYMPTOM_LABEL[s]}</span>
-                      {selected && <Check className="size-4 shrink-0" />}
-                    </button>
-                  );
-                })}
+              <h3 className="meta">{group.group}</h3>
+              <div className="mt-2.5 grid grid-cols-2 gap-px bg-line-light p-px">
+                {group.symptoms.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleSymptom(s)}
+                    className={choice(symptoms.includes(s))}
+                  >
+                    {SYMPTOM_LABEL[s]}
+                  </button>
+                ))}
               </div>
             </div>
           ))}
 
-          {/* Live Pool Classification Pill */}
           {symptoms.length > 0 && (
-            <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-indigo-600" />
-                <span className="text-xs font-bold text-indigo-950">
-                  Assigned pool: {poolMeta.label}
-                </span>
-              </div>
-              <span className="text-[11px] text-indigo-600 font-medium">
+            <div className="flex items-center justify-between border-l-2 border-ink bg-paper-bright px-4 py-3">
+              <span className="text-[12px] font-semibold text-ink">
+                Grouped with: {poolMeta.label}
+              </span>
+              <span className="meta tabular-nums">
                 {symptoms.length} symptom{symptoms.length === 1 ? '' : 's'}
               </span>
             </div>
           )}
 
           {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700 flex items-center gap-2">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>{error}</span>
+            <div className="border-l-2 border-thermal-red bg-paper-bright px-4 py-2.5 text-[12px] text-thermal-red">
+              {error}
             </div>
           )}
 
@@ -195,82 +188,63 @@ export function StudentReportClient({ student, recentMeals }: StudentReportClien
               setError(null);
               setStep(2);
             }}
-            className="w-full py-3 text-sm flex items-center justify-center gap-2"
+            className="w-full py-3.5"
           >
-            Continue to Step 2 <ArrowRight className="size-4" />
+            Continue →
           </NeuButton>
-        </Surface>
+        </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Onset Time Selection */}
-          <Surface className="p-6 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              When did symptoms begin?
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { label: 'Just now (< 2h)', hours: 2 },
-                { label: 'This morning (4-8h)', hours: 6 },
-                { label: 'Yesterday (~24h)', hours: 24 },
-                { label: '2 days ago (~48h)', hours: 48 },
-              ].map((opt) => (
+        <form onSubmit={handleSubmit} className="mt-7 space-y-8">
+          {/* onset */}
+          <div>
+            <h3 className="meta">When did it begin?</h3>
+            <div className="mt-2.5 grid grid-cols-2 gap-px bg-line-light p-px sm:grid-cols-4">
+              {ONSET_OPTIONS.map((opt) => (
                 <button
                   key={opt.hours}
                   type="button"
                   onClick={() => setOnsetOffsetHours(opt.hours)}
-                  className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold text-center transition-all ${
-                    onsetOffsetHours === opt.hours
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'neu-raised-sm text-slate-700'
-                  }`}
+                  className={cn(choice(onsetOffsetHours === opt.hours), 'text-center')}
                 >
-                  {opt.label}
+                  <span className="block">{opt.label}</span>
+                  <span className="block text-[10px] font-normal opacity-70">{opt.sub}</span>
                 </button>
               ))}
             </div>
-          </Surface>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-ink">
+              Whether everyone fell ill in the same few hours or across days is what separates a bad
+              meal from a bad water tank.
+            </p>
+          </div>
 
-          {/* Severity Slider */}
-          <Surface className="p-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Severity Rating (1 = mild, 5 = severe)
-              </h3>
-              <span className="text-sm font-bold text-slate-800 tabular-nums">
-                Level {severity}/5
-              </span>
+          {/* severity */}
+          <div>
+            <div className="flex items-baseline justify-between">
+              <h3 className="meta">How bad is it?</h3>
+              <span className="text-[12px] font-semibold tabular-nums text-ink">{severity} / 5</span>
             </div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="mt-2.5 grid grid-cols-5 gap-px bg-line-light p-px">
               {[1, 2, 3, 4, 5].map((lvl) => (
                 <button
                   key={lvl}
                   type="button"
                   onClick={() => setSeverity(lvl)}
-                  className={`min-h-[44px] rounded-xl text-sm font-bold transition-all ${
-                    severity === lvl
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'neu-raised-sm text-slate-700'
-                  }`}
+                  className={cn(choice(severity === lvl), 'text-center text-[14px] font-bold')}
                 >
                   {lvl}
                 </button>
               ))}
             </div>
-          </Surface>
+          </div>
 
-          {/* Recent Mess Meals Eaten */}
-          <Surface className="p-6 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Utensils className="size-4 text-slate-500" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Mess meals eaten in last 72h
-              </h3>
-            </div>
-            <p className="text-xs text-slate-400">
-              Helps epidemiologists isolate contaminated meal sittings from water issues.
+          {/* meals */}
+          <div>
+            <h3 className="meta">Mess meals in the last 72 hours</h3>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-ink">
+              Tick what you ate. If a meal turns out to be the source, only the students who ate it
+              get an advisory — nobody else is bothered.
             </p>
-
-            <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            <div className="mt-2.5 max-h-56 space-y-px overflow-y-auto bg-line-light p-px">
               {recentMeals.map((m) => {
                 const checked = selectedMeals.includes(m.id);
                 const d = new Date(m.opensAt);
@@ -280,47 +254,32 @@ export function StudentReportClient({ student, recentMeals }: StudentReportClien
                     key={m.id}
                     type="button"
                     onClick={() => toggleMeal(m.id)}
-                    className={`w-full min-h-[44px] px-3 py-2.5 rounded-xl text-left text-xs font-semibold flex items-center justify-between transition-all ${
-                      checked
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'neu-inset-sm text-slate-700'
-                    }`}
+                    className={cn(choice(checked), 'block w-full')}
                   >
-                    <div>
-                      <span className="capitalize">{day} {m.mealType}</span>
-                      <span className="block text-[10px] opacity-75 truncate max-w-xs font-normal">
-                        {m.menuItems.join(', ')}
-                      </span>
-                    </div>
-                    {checked && <Check className="size-4 shrink-0 ml-2" />}
+                    <span className="capitalize">
+                      {day} {m.mealType}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[10px] font-normal opacity-70">
+                      {m.menuItems.join(', ')}
+                    </span>
                   </button>
                 );
               })}
             </div>
-          </Surface>
+          </div>
 
           {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700">
+            <div className="border-l-2 border-thermal-red bg-paper-bright px-4 py-2.5 text-[12px] text-thermal-red">
               {error}
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <NeuButton
-              type="button"
-              onClick={() => setStep(1)}
-              className="py-3 px-4 text-sm flex items-center gap-1.5"
-            >
-              <ArrowLeft className="size-4" /> Back
+          <div className="flex items-center gap-2">
+            <NeuButton type="button" onClick={() => setStep(1)} className="py-3.5">
+              ← Back
             </NeuButton>
-
-            <NeuButton
-              type="submit"
-              variant="primary"
-              disabled={submitting}
-              className="flex-1 py-3 text-sm flex items-center justify-center gap-2"
-            >
-              {submitting ? <Spinner /> : <>Submit Report <Send className="size-4" /></>}
+            <NeuButton type="submit" variant="primary" disabled={submitting} className="flex-1 py-3.5">
+              {submitting ? <Spinner className="border-paper-bright/40 border-t-paper-bright" /> : 'Submit report'}
             </NeuButton>
           </div>
         </form>

@@ -185,27 +185,29 @@ Stated out loud in the deck, because reviewers punish undeclared assumptions and
 
 Two people build two screens; without this they end up looking like two different apps.
 
-**Warm colours mean risk and nothing else.** All chrome, navigation and buttons are cool or neutral.
-If something on screen is orange or red, it is because people are sick there.
+**The interface is paper. Warm colour means risk and nothing else.** All chrome, navigation, type
+and buttons are achromatic. If something on screen is amber, orange or crimson, it is because a
+measurement put it there.
 
-Attack-rate ramp, normalised against `elevation.maxAttackRate`:
+The full contract is `docs/CLAUDE-DESIGN.md` — read it before styling anything. The short version:
 
-| share of max | class |
-|---|---|
-| 0 | `bg-zinc-100 dark:bg-zinc-800` |
-| ≤ 0.25 | `bg-amber-100 dark:bg-amber-950` |
-| ≤ 0.50 | `bg-amber-300 dark:bg-amber-800` |
-| ≤ 0.75 | `bg-orange-400 dark:bg-orange-700` |
-| > 0.75 | `bg-red-500 dark:bg-red-600` |
+- **Tokens, never hex.** `--paper` `--ink` `--line` for structure; `--t0`…`--t7` (three faces each)
+  for heat. Tailwind utilities: `bg-paper` `text-ink` `text-muted-ink` `border-line-light`.
+  Read the ramp through `components/thermal/`, never by hand.
+- **Radius is 0.** Panels are `border border-line-light`, square, no shadow. `.panel` / `.panel-sunk`.
+- **t0 is chromatically dead** — "normal" has no tint, or every healthy block looks mildly sick.
+  **t7 is dense crimson**, not a brighter red, with a white-hot 1px rim (`--thermal-rim`).
+- **Risk marks are a small square plus type**, not pills: watch = amber, elevated = orange,
+  critical = crimson. Success is not green; confirmations are neutral.
+- **Exactly one red control exists** — *Send advisory*. Everything else primary is solid ink.
+- **Numbers are graphics.** `184` enormous, `REPORTS` small beneath. `tabular-nums` everywhere.
+  Below 3 cases render `<3`, never the number.
+- **Sections are hairline rules with numbered eyebrows**, not boxes. Page container `.editorial`
+  (max-w-1440, fluid gutters).
+- Type: Inter for everything, Geist Mono for metadata only. Uppercase is confined to `.eyebrow`,
+  `.meta`, buttons and status marks.
 
-- Flagged node: `ring-2 ring-red-500 animate-pulse`
-- Status badges — watch `bg-zinc-200 text-zinc-900` · alert `bg-amber-500 text-white` ·
-  confirmed `bg-red-600 text-white` · resolved `bg-emerald-600 text-white`
-- Radius `rounded-lg`; cards `border border-zinc-200 dark:border-zinc-800`
-- Numbers use `tabular-nums`
-- Page container `max-w-7xl mx-auto px-6 py-8`
-
-Dark mode via Tailwind `dark:` throughout. Do not add a theme switcher.
+Dark mode is a thermal night mode via `.dark`. Do not add a theme switcher.
 
 ---
 

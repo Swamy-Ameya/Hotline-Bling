@@ -2,17 +2,21 @@
 
 **Read this before you style anything.** It sits alongside `CLAUDE.md` (product ground truth) and
 `docs/BUILD-PLAN.md` (what to build next). Where this file and your instincts disagree, this file
-wins. Where this file and `CLAUDE.md` §11 disagree, **`CLAUDE.md` wins** — this document extends
-that section, it does not replace it.
+wins.
 
 Two agents and three people build screens here. Without a single written look they produce three
 apps wearing the same logo.
+
+> **Revision — thermal editorial.** The neumorphic layer this document used to describe is gone.
+> Soft shadows, 16px radii and raised surfaces have been replaced by paper, hairlines and square
+> corners. `CLAUDE.md` §11 has been updated to match; where you find an older copy of either
+> document, this one is current.
 
 ---
 
 ## 1. The one idea
 
-> **A cold campus is neutral and quiet. Heat exists only where students are ill.**
+> **The interface is paper. Heat exists only where students are ill.**
 
 That is the entire visual system. Everything below is consequence.
 
@@ -22,124 +26,142 @@ warm, then the four-second glance carries no information and the product has fai
 thing it does.
 
 **Test for any new component:** desaturate the screen to greyscale. If you can no longer tell where
-the outbreak is, the design is wrong. If you can *still* tell — because of position, height, ring,
-or label — the design is right, and colour is doing its proper job of making an already-legible
-thing faster to read.
+the outbreak is, the design is wrong. If you can *still* tell — because of position, height, rim or
+label — the design is right, and colour is doing its proper job of making an already-legible thing
+faster to read.
+
+**Corollary, and the harder half:** *the default component must be boring.* An empty panel is
+off-white, a 1px rule and black type. If a blank panel already looks exciting, a hot one has
+nowhere left to go.
 
 ---
 
-## 2. The ramp
+## 2. Foundation
 
-Defined once, in `app/globals.css`, as eight stops with three faces each. Read them through
-`components/thermal/`, never by hand.
+Neutrals first. The interface lives almost entirely inside these.
+
+```css
+--paper: #F3F2EF;   --paper-bright: #F8F7F4;  --paper-sunk: #EAE9E4;
+--ink:   #171717;   --ink-soft:     #383838;  --muted:      #777777;
+--line:  #A9A9A4;   --line-light:   #D6D5D0;
+```
+
+Available as Tailwind utilities: `bg-paper`, `text-ink`, `text-muted-ink`, `border-line-light`.
+
+**Radii are zero.** `--radius: 0px`, and the `radius-*` scale is pinned at 0–2px. Cards are printed
+technical panels, not app tiles. The moment one component has a 12px corner it stops belonging here.
+
+**Shadows do not exist.** Depth comes from the map's geometry, not from the chrome. A panel that
+needs separating from the page gets a border, or a different ground.
+
+---
+
+## 3. The ramp
+
+Defined once, in `app/globals.css`, as eight stops with three faces each (`top` lit, `right` turned
+away, `left` in shadow). Read them through `components/thermal/`, never by hand.
 
 | Stop | Reads as | Meaning | Anchor |
 |---|---|---|---|
-| `t0` | pale slate | **Absence of signal.** Chromatically dead on purpose | `normal` |
-| `t1` | teal-green | Below baseline. Only the engine may assert this | — |
-| `t2` | chartreuse | First measurable lift | — |
+| `t0` | warm grey | **Absence of signal.** Chromatically dead on purpose | `normal` |
+| `t1` | brighter grey | Below baseline. Only the engine may assert this | — |
+| `t2` | yellow | First measurable lift | — |
 | `t3` | amber | Something is happening | **`watch`** |
 | `t4` | orange | Concentrating | — |
-| `t5` | red-orange | Clearly abnormal | **`elevated`** |
+| `t5` | red | Clearly abnormal | **`elevated`** |
 | `t6` | deep red | Bad | — |
-| `t7` | ember, near-black magenta | Worst on campus | **`critical`** |
+| `t7` | crimson | Worst on campus | **`critical`** |
 
-Two properties of this ramp are non-obvious and both are load-bearing:
+Three properties are non-obvious and all three are load-bearing:
 
 **`t0` has no tint.** The instant "normal" acquires a colour, every healthy block on campus starts
-to look mildly sick, and the eye loses its reference point for cold. Resist every urge to make
-normal "a nice cool blue".
+to look mildly sick and the eye loses its reference for cold. Resist every urge to make normal "a
+nice cool blue" — cool would also fight the warm paper.
 
-**`t7` is the darkest stop, not the brightest.** Real thermal renders drive their hottest values to
-black-magenta, and a burnt core reads as *worse* than another red at a glance, where a brighter red
-just reads as *more red*. This is why the peak of the reference art is almost black.
+**`t7` is dense, not bright.** The eye reads a dark saturated mass with an incandescent rim as
+hotter than any further red, which is how thermal imagery actually behaves. A brighter red just
+reads as *more red*.
 
-`t1` is unreachable from `thermalStopFor()`. Teal is a claim — "fewer cases than we expect here" —
-and you cannot infer a claim from a share of the maximum. Only `lib/domain/risk.ts` may hand it out.
+**`t1` is unreachable from `thermalStopFor()`.** "Fewer cases than we expect here" is a claim, and
+you cannot infer a claim from a share of the maximum. Only `lib/domain/risk.ts` may hand it out.
 
-### Two ramps, deliberately
+**The incandescent rim** (`--thermal-rim`, `#FFF1A8`) is the white-hot boundary in the reference
+art. It is a 1px stroke, or a 5px core marker, on anything above `watch` — and it is **never a
+fill**. Filled, it becomes the brightest thing on the page and steals the glance from `t7`, which is
+the exact inversion of what you want.
 
-| Ramp | Use for | Where |
-|---|---|---|
-| Eight-stop oklch faces | Extruded geometry, where you need lit/shadow face separation | the map |
-| Five-bucket Tailwind (`CLAUDE.md` §11, verbatim) | Flat fills — table cells, floor matrices, list rows | everywhere else |
-
-`heatClass()` in `components/thermal/` is the second ramp, unchanged from the agreed contract.
-Do not add a third.
-
----
-
-## 3. Two substrates
-
-The neumorphic system in `app/globals.css` stays. It is the **physical** layer — how surfaces sit
-in space. Thermal is the **informational** layer — what is wrong and where. They stack; they never
-substitute for each other.
-
-| Layer | Owns | Classes |
-|---|---|---|
-| Neumorphic | elevation, press physics, page ground | `neu-raised` `neu-inset` `neu-press` `neu-page` |
-| Thermal | risk, heat, focal depth | `thermal-glow-*` `thermal-rim` `thermal-dof*` `thermal-breathe` |
-
-A hot card is `neu-raised thermal-glow-critical` — it keeps its shadow **and** gains heat. It does
-not trade one for the other. `thermal-glow-*` is authored to include the neumorphic shadow so this
-composes correctly; that is why those rules look redundant and why they are not.
-
-**The incandescent rim** (`--thermal-rim`) is the white-hot boundary in the reference art. It is a
-1px stroke on the lit face of any block above `watch`, and it is **never a fill**. Filled, it
-becomes the brightest thing on the page and steals the glance from `t7`, which is the exact
-inversion of what you want.
+There is one ramp. `heatStyle(share)` gives you a flat fill for table cells and floor bars from the
+same tokens the map uses. Do not add a second.
 
 ---
 
 ## 4. Where heat is permitted
 
-**Allowed:** the campus map · risk badges and pills · the epi curve's case bars · block cards above
-`normal` · the landing hero · notification severity dots · empty-state illustration when the campus
-is *not* quiet.
+**Allowed:** the campus map and its heat fields · risk badges · the epi curve's bars · attack-rate
+bars · a panel *border* above `normal` · the landing status band · advisory severity marks · the
+dispatch console's route strip.
 
-**Forbidden, without exception:** primary and secondary buttons · navigation and tab bars · links ·
-focus rings · form fields, labels and validation states · loading spinners and skeletons · the
-logo · card borders on non-hot cards · any chart axis, gridline or label · the student bottom tab
-bar, including its active state.
+**Forbidden, without exception:** navigation and tab bars, including active states · links · focus
+rings · form fields, labels and validation states · loading spinners and skeletons · the wordmark ·
+borders on non-hot panels · any chart axis, gridline or tick label · section headings.
 
-A destructive action is a **grey** button with a red *label*, not a red button. There is exactly one
-red-filled control class in this product and it is not a button: it is a block in trouble.
+**Exactly one red control exists.** `NeuButton variant="critical"` is used for **Send advisory** and
+nothing else. That button is the act of declaring an outbreak to human beings, which is the single
+most consequential thing anyone can do in this product, and it should look like it. Every other
+destructive or primary action is `variant="primary"` — solid ink. If you find yourself reaching for
+`critical` a second time, you are wrong.
 
-**Success is not green.** Green is unclaimed here — `t1` owns the cool end of the ramp, and a green
-"Advisory sent" toast sitting next to a teal "below baseline" block teaches the user that the two
-mean related things. Confirmations are neutral with a check glyph.
+**Success is not green.** Green is unclaimed here. Confirmations are neutral: a small square mark
+and a sentence.
 
 ---
 
-## 5. Numbers and words
+## 5. Type
 
-- `tabular-nums` on every figure, everywhere. Non-negotiable — numbers that reflow while data
-  refreshes are unreadable.
-- **The UI states sentences, not statistics.** `BUILD-PLAN.md` §0.2: no p-values, attack rates or
-  likelihood ratios on any screen. *"16 reports, where we'd normally expect about 1."*
-- Headline figure: `text-4xl font-semibold tracking-tight tabular-nums`. One per card, maximum.
-- The unit is always adjacent and always smaller — `16` large, `students` small. Never `16 students`
-  at one size.
+One grotesk (Inter) and one mono (Geist Mono). The mono is for metadata where fixed width does real
+work — timestamps, coordinates, registration numbers — and nowhere else.
+
+| Class | Use | Spec |
+|---|---|---|
+| `.display` | headlines | 800, uppercase, `-0.042em`, `line-height: 0.92` |
+| `.eyebrow` | section labels | 11px, 600, uppercase, `0.18em` |
+| `.meta` | instrument metadata | mono, 10px, uppercase, `0.12em` |
+| `.numeral` | figures | 800, tabular, `-0.05em` |
+
+**Uppercase labels are part of this system.** An earlier revision banned them; that was a rule for a
+softer product than this one turned out to be. Uppercase is confined to `.eyebrow`, `.meta`,
+buttons and status marks — never to body copy, never to a headline that is a sentence, and never to
+anything a student reads under stress.
+
+- `tabular-nums` on every figure, everywhere. Non-negotiable.
+- **The number is the graphic.** `184` enormous, `REPORTS` small underneath. Never `184 reports` at
+  one size — see the `Stat` primitive, which enforces the order.
+- **The UI states sentences, not statistics.** No p-values, likelihood ratios or attack rates in
+  running copy. *"14 reports, where we'd normally expect about 1."* Attack rate appears exactly
+  once, in the evidence section, labelled and explained.
 - **Suppression is a glyph, not a number.** Below 3 cases render `<3`, styled identically to a real
   figure so it does not read as missing data. `CLAUDE.md` §7 and India's DPDP Act 2023.
-- Sentence case for everything. No ALL-CAPS labels — this is a health surveillance tool, not a
-  dashboard template.
 
 ---
 
 ## 6. Motion
 
-Three behaviours. Adding a fourth needs a conversation.
+Animation communicates physical state. Nothing bounces, nothing flies in from the left.
 
 | Name | What | Means |
 |---|---|---|
-| `neu-press` | surface sinks under the finger | this is physical |
-| `animate-pulse-ring` | discrete ring expanding out | **alarm** — reserve for `critical` |
-| `thermal-breathe` | slow 3.4s opacity and scale swell | ambient sustained heat |
+| `thermal-breathe` | 5.5s opacity + scale swell | ambient sustained heat |
+| `animate-pulse-ring` | 3.4s ring expanding out | **alarm** — reserve for hot blocks |
+| `thermal-scan` | 13s band crossing the map | the system is still watching |
+| `live-pulse` | 2.5s dot fade | the tiny LIVE indicator, and only that |
+| `animate-rise` | 0.6s 10px settle | content resolving on load |
 
-`thermal-breathe` is intentionally slower than a heartbeat. Anything faster reads as urgency, and
+`thermal-breathe` is deliberately slower than a heartbeat. Anything faster reads as urgency, and
 sustained elevated risk is not urgency — it is a condition. Confusing the two is how a dashboard
 trains people to ignore it.
+
+Page load resolves in strata: layout, then map geometry, then heat, then metadata. Everything fading
+in at once tells the reader nothing about what matters.
 
 Every rule degrades under `prefers-reduced-motion`, already handled in `globals.css`. Verify it;
 do not assume it.
@@ -148,20 +170,34 @@ do not assume it.
 
 ## 7. The map
 
-`components/radar/campus-heatmap.tsx` today is a correct isometric SVG with hardcoded hex faces.
-It becomes token-driven; it does not get rewritten. `BUILD-PLAN.md` §8 may later replace the
-projection with Leaflet satellite tiles — **the thermal language survives that change unaltered**,
-because it lives in the fill and the rim, not the projection.
+`components/radar/campus-map.tsx`. One component, three grounds — `satellite`, `plan`, `model` —
+and identical geometry on all three, so nobody has to re-learn the picture when they switch.
+
+There used to be two maps and a toggle. That was the wrong split: the diagram knew the shape of the
+buildings and nothing about where they are; the Leaflet view knew where they are and nothing about
+how many students live on which floor. The geometry now sits **on** the map, anchored to real
+coordinates and re-projected on every pan.
+
+Three layers, always in this order:
+
+1. **Heat field** — large, diffuse, irregular, breathing. Rotation and eccentricity are hashed from
+   the block id so contours are organic but stable; a field that reshuffles on render reads as noise.
+2. **Geometry** — one extruded slab per floor, each coloured by its own reports. Reading down that
+   column is how you tell a bad tank (every floor warm) from a bad floor (one warm, rest cold).
+3. **Core signal** — the incandescent rim and a 5px marker, only on blocks that are actually hot.
+
+Rules:
 
 - **Height is occupancy. Colour is illness.** Two channels, never crossed. A tall cold tower is a
-  large healthy hostel; a short ember one is a small block in trouble; you can tell them apart
-  without consulting the legend. Say this once on screen — `ThermalKeyNote` exists for it.
-- **Tilt-shift.** The reference art gets its depth from a shallow focal plane: near and far edges
-  fall out of focus and the eye is forced to the middle. `thermal-dof` masks the container edges;
-  `thermal-dof-far` / `-near` blur the outer block rows. Never apply either to text.
-- **Ground stays neutral.** `--thermal-ground`, `--thermal-grid`. The field the voxels sit on is
-  cold by law, which is what makes a single hot block visible from across a room.
-- Hover raises the block and reveals the card. It does not change its colour — colour is data.
+  large healthy hostel; a short crimson one is a small block in trouble. Say it once on screen.
+- **The ground is drained of colour** — satellite tiles are filtered to `saturate(0.18)`. Every warm
+  pixel on that screen has to be a measurement, and a satellite tile is full of greens and browns
+  that compete with the signal.
+- **A floor below 3 cases renders `<3`** in the readout, same as everywhere else.
+- **Supply lines are drawn only for the block under inspection**, and the line the assessment blames
+  is the only one in colour. Nineteen tanks and two kitchens wired to everything is a diagram nobody
+  can read.
+- **Selection dims the rest.** Focus lens, not a modal — the interface stays spatially connected.
 - The legend is mandatory. An unlabelled heat ramp is decoration, and a warden acting on decoration
   is precisely the failure this product exists to prevent.
 
@@ -169,82 +205,71 @@ because it lives in the fill and the rim, not the projection.
 
 ## 8. Per surface
 
-### `/` landing — the only place that may be beautiful for its own sake
+Every page follows the same rhythm: **quiet → dense → quiet.** A section is a hairline rule and a
+numbered eyebrow, never a box. If you are about to add a fourth bordered card to a row, stop.
 
-Full-bleed thermal hero: the campus voxel field at rest, `thermal-dof` on, breathing slowly, live
-data. If campus is quiet the hero is almost entirely `t0` and **that is the point** — the honest
-version of this product is usually cold, and showing that builds more credibility than a permanent
-fake emergency. Keep the existing "what this does not do" section; it is the most persuasive block
-on the page.
+### `/` landing
 
-### `/radar` warden dashboard — dense, calm, ranked
+Editorial hero: four columns of type, eight of live map. The map carries roughly two thirds of the
+visual weight and the copy is a caption for it. If campus is quiet the field is almost entirely
+`t0` and **that is the point** — the honest version of this product is usually cold, and showing
+that builds more credibility than a permanent fake emergency. Keep "what this does not do"; it is
+the most persuasive block on the page.
 
-Light neumorphic ground. Map at the top with the legend. Below it, hotspots ranked by risk, each a
-`neu-raised` card carrying `thermal-glow-*` only if hot. Water tests, mess check and the live case
-feed stay neutral, always. The dashboard should look **boring on a quiet day**. If it looks exciting
-on a quiet day, it will look identical on a bad one.
+### `/radar` warden dashboard
 
-### `/radar/[blockId]` — the floor matrix
+Five sections, answering in order: what is happening · where · what to do · why we believe it · what
+came in. It used to be eleven equal-sized cards all shouting at the same volume.
 
-Flat five-bucket ramp (`heatClass`), not voxels — this is a grid of rooms, and extrusion here
-implies a physical height that does not exist. Suppressed cells render `<3`. `BUILD-PLAN.md` §9.1
-adds a mess-attendance panel; keep it neutral, it is context and not risk.
+The dashboard should look **boring on a quiet day**. If it looks exciting on a quiet day, it will
+look identical on a bad one.
 
-### `/doctor` — a clinical form, not a dashboard
+### `/radar/[blockId]`
 
-Zero decoration. The only heat permitted is a small risk badge on the student's block, so the
-clinician knows the context of what they are looking at. Everything else is inputs at comfortable
-size. This screen is used under time pressure by someone who did not choose it.
+The floor column is the whole point of this page. Flat bars from the shared ramp, suppressed cells
+as `<3`, tank tests and mess turnout kept neutral — they are context, not risk.
 
-### `/report` and `/app/report` — a phone, in a corridor, one-handed
+### `/doctor`
 
-Touch targets **≥ 44px** — the current symptom chips are ~36px and that is a real defect
-(`BUILD-PLAN.md` §7.1). Symptom chips are neutral when unselected and neutral-dark when selected.
+Zero decoration. Four numbered steps, square inputs, and no colour at all. This screen is used under
+time pressure by someone who did not choose it.
+
+### `/app/report` and the student PWA
+
+Touch targets **≥ 44px**. Symptom chips are neutral when unselected and solid ink when selected.
 **A symptom chip never turns red.** A student picking "vomiting" has not been told they are part of
 an outbreak, and colouring their own symptom as danger tells them exactly that.
 
-### `/app` student PWA — the surface that must not leak
-
-Same light neumorphic ground as the dashboard. **Not a separate design language, a separate data
-boundary.** `BUILD-PLAN.md` §7: risk levels only, never counts.
-
-- The general campus view is tinted by `RiskLevel` alone — no numbers, no comparison sentence, no
-  confidence, no block ranking.
-- Pool heat appears only after the student reports, and shows only their own pool.
-- Bottom tab bar (`Home · Report · Alerts · Me`), fixed, thumb-reachable, **neutral including its
-  active state**.
-- One-tap FAB to report. Neutral.
-- The only heat a student ever sees is their own block's tint and an advisory addressed to them.
+`/app` is not a separate design language — it is a separate **data boundary**. Risk levels only,
+never counts. The only heat a student ever sees is their own block's tint and an advisory addressed
+to them.
 
 ---
 
-## 9. What must not be built
+## 9. Dispatch
 
-- No third colour ramp. Two exist and they are enough.
-- No charting library. Recharts is here (`CLAUDE.md` §12).
-- No theme switcher. Dark mode via `dark:` only.
-- No 3D engine for the map. Twenty buildings do not justify a renderer in the bundle, and the SVG is
-  sharp at any zoom on a cheap phone.
+The dispatch console is the one screen where the design has a policy job.
+
+Before the button, in this order: the **supply line** being blamed, and the **recipient count**
+against the campus population. A warden who can see "112 students on two floors, not 4,000" will
+press it; one who cannot, won't — and an advisory nobody is willing to send is the same as no
+system at all.
+
+Show the spared number as loudly as the notified one. "Deliberately not notified: 4,628" is a claim
+about restraint, and restraint is the product.
+
+---
+
+## 10. What must not be built
+
+- No second colour ramp. One exists and it is enough.
+- No charting library. The figures are hand-drawn SVG on purpose — a library's defaults (rounded
+  bars, blue palette, axis chrome, drop shadows) would quietly reintroduce everything this system
+  removed. Recharts remains available for anything genuinely complex.
+- No theme switcher. The dark tokens exist as a thermal night mode and are wired to `.dark`.
+- No 3D engine. Nineteen buildings do not justify a renderer in the bundle, and SVG stays sharp at
+  any zoom on a cheap phone.
+- No glassmorphism, no gradient text, no floating cards, no icon on every nav item.
 - No colour as the sole carrier of meaning. Every heat state pairs with a label, a glyph or a
   position. Roughly 1 in 12 male students has a red-green deficiency, and this is a health product.
-- No red buttons. See §4.
 - No warm chrome. See §1.
-
----
-
-## 10. Build order
-
-Tokens landed first because both surfaces consume them; retrofitting after means doing it twice.
-
-| Step | Work | State |
-|---|---|---|
-| 1 | Thermal tokens in `globals.css` | **done** |
-| 2 | `components/thermal/` primitives | **done** |
-| 3 | Point `campus-heatmap.tsx` at the tokens; add rim + DOF | next |
-| 4 | Retheme `RiskBadge` / `Surface` glows onto `thermal-glow-*` | next |
-| 5 | Landing hero | after 3 |
-| 6 | `/app` student surfaces, built thermal-native from the start | after `BUILD-PLAN.md` §2, §3 |
-| 7 | Epi curve + floor matrix onto the flat ramp | last |
-
-Steps 3–5 touch only files Aditya owns under `CLAUDE.md` §2. Step 6 must wait for auth and pools,
-because there is no student session to design against until those exist.

@@ -1,49 +1,28 @@
 import { buildSituationReport } from '@/lib/domain/surveillance';
-import { BLOCKS, blockCapacity } from '@/lib/domain/campus';
-import { getBlockRollups } from '@/lib/db';
+import { buildMapBlocks } from '@/lib/domain/campus-view';
+import { buildDispatchPlan, type DispatchPlan } from '@/lib/domain/dispatch';
 import { AppShell } from '@/components/neu/shell';
 import { RadarClient } from './radar-client';
-import type { HeatBlock } from '@/components/radar/campus-heatmap';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Laid out as two clusters on an isometric grid — boys' blocks to the south,
- * girls' to the north — rather than by exact GPS. Real coordinates put the
- * buildings almost on top of each other at this zoom, and a map you cannot read
- * is worse than a diagram that is honest about being a diagram.
- */
-function gridPosition(index: number, gender: 'boys' | 'girls'): { gx: number; gy: number } {
-  if (gender === 'boys') {
-    return { gx: index % 4, gy: 4 + Math.floor(index / 4) };
-  }
-  return { gx: 5 + (index % 4), gy: Math.floor(index / 4) };
-}
-
 export default async function RadarPage() {
   const report = buildSituationReport();
-  const rollups = getBlockRollups(72);
+  const blocks = buildMapBlocks();
 
-  let boys = 0;
-  let girls = 0;
-
-  const heatBlocks: HeatBlock[] = BLOCKS.map((b) => {
-    const pos = b.gender === 'boys' ? gridPosition(boys++, 'boys') : gridPosition(girls++, 'girls');
-    const roll = rollups.find((r) => r.blockId === b.id);
-    return {
-      id: b.id,
-      name: b.name,
-      gender: b.gender,
-      cases: roll?.cases ?? 0,
-      capacity: blockCapacity(b),
-      floors: b.floors,
-      ...pos,
-    };
-  });
+  // Dispatch plans are worked out here rather than on selection, because the
+  // recipient count needs the roster and the meal scans — and a warden should
+  // never watch a spinner between "this block is in trouble" and "here is who
+  // gets told".
+  const plans: Record<string, DispatchPlan> = {};
+  for (const h of report.hotspots) {
+    const plan = buildDispatchPlan(h, report.suspectMeals);
+    if (plan) plans[h.blockId] = plan;
+  }
 
   return (
     <AppShell>
-      <RadarClient report={report} heatBlocks={heatBlocks} />
+      <RadarClient report={report} blocks={blocks} plans={plans} />
     </AppShell>
   );
 }

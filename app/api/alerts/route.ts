@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAlert, listAlerts, setAlertState } from '@/lib/db';
-import { getMockDb } from '@/lib/db/mock';
+import { createAlert, listAlerts, resolveAudience, setAlertState } from '@/lib/db';
 import { sendWebPushNotification } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
@@ -43,21 +42,23 @@ export async function POST(request: Request) {
     clusterId: body.clusterId ?? 'manual',
     blockId: body.blockId ?? null,
     floor: body.floor ?? null,
+    floors: body.floors ?? null,
+    mealId: body.mealId ?? null,
     title: body.title,
     body: body.body,
     sentBy: body.sentBy,
   });
 
-  // Fan out push notification to any registered mobile PWA devices in this cohort
-  const matchingStudentIds = getMockDb().students
-    .filter(
-      (s) =>
-        (body.blockId === null || s.blockId === body.blockId) &&
-        (body.floor === null || s.floor === body.floor),
-    )
-    .map((s) => s.id);
+  // Push goes to exactly the cohort the advisory was addressed to — the same
+  // resolution the alert row recorded, never a wider one.
+  const { studentIds } = resolveAudience({
+    blockId: body.blockId ?? null,
+    floor: body.floor ?? null,
+    floors: body.floors ?? null,
+    mealId: body.mealId ?? null,
+  });
 
-  sendWebPushNotification(matchingStudentIds, {
+  sendWebPushNotification(studentIds, {
     title: body.title,
     body: body.body,
     url: '/app/alerts',

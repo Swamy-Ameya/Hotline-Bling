@@ -1,4 +1,3 @@
-import { AppShell } from '@/components/neu/shell';
 import { LoginClient } from './login-client';
 import { getSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
@@ -13,9 +12,5 @@ export default async function LoginPage() {
     redirect('/radar');
   }
 
-  return (
-    <AppShell>
-      <LoginClient />
-    </AppShell>
-  );
+  return <LoginClient />;
 }

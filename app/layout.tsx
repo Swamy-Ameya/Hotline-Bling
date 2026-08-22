@@ -1,19 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+/**
+ * One grotesk and one mono, and nothing else.
+ *
+ * The type has to read as an engineering report rather than as a product
+ * landing page: Inter carries the display sizes without personality, and the
+ * mono is reserved for metadata — timestamps, ids, coordinates — where a
+ * fixed width is doing actual work.
+ */
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  weight: ["400"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -25,7 +26,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Outbreak Radar — Hostel Micro-Outbreak Early Warning System",
-  description: "Manipal University Jaipur campus food and water-borne illness surveillance & spatial scan statistic detection.",
+  description:
+    "Manipal University Jaipur campus food and water-borne illness surveillance — a live thermal map of where illness is concentrating, and what to check first.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -35,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#eef2f6",
+  themeColor: "#F3F2EF",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -50,9 +52,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.variable} ${instrumentSerif.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-[#fafafa] text-zinc-900 selection:bg-zinc-900 selection:text-white">
+      <body className="flex min-h-full flex-col bg-paper font-sans text-ink">
         {children}
         <PWAInstallPrompt />
       </body>

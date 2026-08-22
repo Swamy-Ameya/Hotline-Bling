@@ -1,258 +1,276 @@
 import Link from 'next/link';
-import {
-  ArrowRight,
-  Beaker,
-  Droplets,
-  HeartPulse,
-  MapPin,
-  Smartphone,
-  Stethoscope,
-  UtensilsCrossed,
-} from 'lucide-react';
 import { AppShell } from '@/components/neu/shell';
-import { NeuButton, RiskBadge, Surface } from '@/components/neu';
+import { NeuButton, RiskBadge, Stat } from '@/components/neu';
 import { buildSituationReport } from '@/lib/domain/surveillance';
-import { countStudents, getBlockRollups } from '@/lib/db';
-import { BLOCKS, blockCapacity } from '@/lib/domain/campus';
+import { buildMapBlocks } from '@/lib/domain/campus-view';
+import { countStudents } from '@/lib/db';
+import { BLOCKS } from '@/lib/domain/campus';
 import { QRCodeSVG } from '@/components/qr-code';
-import { CampusHeatmap, type HeatBlock } from '@/components/radar/campus-heatmap';
+import { CampusThermalMap } from '@/components/radar/campus-map';
+import { RISK_META, SOURCE_META } from '@/lib/domain/risk';
 
 export const dynamic = 'force-dynamic';
 
-const STEPS = [
+const INPUTS = [
   {
-    icon: Stethoscope,
-    title: 'The doctor writes it down once',
-    body: 'During a visit, the campus doctor records symptoms, when they started, and what was prescribed. The student’s block, floor and room come from the roster — nothing to ask, nothing typed twice.',
+    n: '01',
+    t: 'The doctor writes it down once',
+    b: 'During a visit the campus doctor records symptoms, when they started and what was prescribed. Block, floor and room come from the roster — nothing to ask, nothing typed twice.',
   },
   {
-    icon: HeartPulse,
-    title: 'Students report from their phone',
-    body: 'Most people never visit a health centre for a mild stomach upset, and the ones who do turn up a day late. A thirty-second form catches the rest, which is where the head start comes from.',
+    n: '02',
+    t: 'Students report from their phone',
+    b: 'Most people never visit a health centre for a mild stomach upset, and the ones who do turn up a day late. A thirty-second form catches the rest. That is where the head start comes from.',
   },
   {
-    icon: UtensilsCrossed,
-    title: 'The mess data is already there',
-    body: 'Every plate collected is a card scan. That tells us who ate what and when, without anyone entering it by hand.',
+    n: '03',
+    t: 'The mess data already exists',
+    b: 'Every plate collected is a card scan. That tells us who ate what and when, without anybody entering it by hand.',
   },
   {
-    icon: MapPin,
-    title: 'We look for things sitting together',
-    body: 'Same block, same floor, same meal, same few hours. When reports cluster somewhere they normally would not, the block shows up on the map.',
+    n: '04',
+    t: 'We look for things sitting together',
+    b: 'Same block, same floor, same meal, same few hours. When reports cluster where they normally would not, the block heats up on the map.',
   },
 ];
 
-function gridPosition(index: number, gender: 'boys' | 'girls'): { gx: number; gy: number } {
-  if (gender === 'boys') {
-    return { gx: index % 4, gy: 4 + Math.floor(index / 4) };
-  }
-  return { gx: 5 + (index % 4), gy: Math.floor(index / 4) };
-}
+const LIMITS = [
+  {
+    t: 'It does not diagnose anyone',
+    b: 'It flags places, not people. A doctor decides what is wrong with a patient; this decides which block is worth a visit tonight.',
+  },
+  {
+    t: 'It does not alert anyone on its own',
+    b: 'Every advisory is sent by a person. An automated warning fired off unverified reports is how you panic a campus at two in the morning.',
+  },
+  {
+    t: 'It does not track individuals',
+    b: 'Wardens see totals by block. Names and rooms stay with the health centre, and a location is never shown when only one or two people are involved.',
+  },
+];
 
 export default async function HomePage() {
   const report = buildSituationReport();
+  const blocks = buildMapBlocks();
   const students = countStudents();
-  const rollups = getBlockRollups(72);
-
-  let boys = 0;
-  let girls = 0;
-
-  const heatBlocks: HeatBlock[] = BLOCKS.map((b) => {
-    const pos = b.gender === 'boys' ? gridPosition(boys++, 'boys') : gridPosition(girls++, 'girls');
-    const roll = rollups.find((r) => r.blockId === b.id);
-    return {
-      id: b.id,
-      name: b.name,
-      gender: b.gender,
-      cases: roll?.cases ?? 0,
-      capacity: blockCapacity(b),
-      floors: b.floors,
-      ...pos,
-    };
-  });
+  const top = report.hotspots[0];
+  const hot = report.overall !== 'normal';
 
   return (
     <AppShell>
-      {/* ── hero ── */}
-      <section className="mx-auto max-w-7xl px-6 pb-10 pt-14">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
-          <div className="animate-rise">
-            <span className="inline-flex items-center gap-2 rounded-full neu-raised-sm px-3.5 py-1.5 text-xs font-semibold text-slate-500">
-              <Droplets className="size-3.5 text-indigo-500" />
-              Manipal University Jaipur
-            </span>
+      {/* ═══ 01 — hero ═══════════════════════════════════════════════════ */}
+      <section className="editorial pt-10 pb-0">
+        <div className="flex items-baseline justify-between gap-6 border-b border-line-light pb-4">
+          <span className="eyebrow">01 / Manipal University Jaipur</span>
+          <span className="meta hidden sm:block">Hostel micro-outbreak early warning</span>
+        </div>
 
-            <h1 className="mt-5 text-5xl font-bold leading-[1.08] tracking-tight text-slate-800">
-              Find the bad tank
+        <div className="grid gap-8 pt-8 lg:grid-cols-12 lg:gap-10">
+          {/* The words get four columns. The map gets eight — it is the
+              product, and the copy is a caption for it. */}
+          <div className="lg:col-span-4">
+            <h1 className="display text-[clamp(2.6rem,6.2vw,4.6rem)] text-ink animate-rise">
+              See the
               <br />
-              <span className="text-slate-400">before twenty students</span>
+              cluster
               <br />
-              get sick.
+              before it
+              <br />
+              <span className="text-thermal-red">spreads.</span>
             </h1>
 
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-500">
-              Hostel stomach bugs get noticed on day three, once fifteen or twenty people are ill and
-              somebody finally connects them. The information existed on day one — it was just spread
-              across a warden’s register, the clinic, the mess complaint book and a floor WhatsApp
-              group. We put it in one place and watch for things that cluster.
+            <p className="mt-7 max-w-md text-[15px] leading-[1.65] text-ink-soft animate-rise stagger-1">
+              Hostel stomach bugs get noticed on day three, once fifteen or twenty people are ill
+              and somebody finally connects them. The information existed on day one — scattered
+              across a warden&rsquo;s register, the clinic, the mess complaint book and a floor
+              WhatsApp group. We put it in one place and watch for what clusters.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-2 animate-rise stagger-2">
               <Link href="/radar">
-                <NeuButton variant="primary" className="flex items-center gap-2 px-6 py-3 text-base">
-                  Open the dashboard
-                  <ArrowRight className="size-4" />
-                </NeuButton>
+                <NeuButton variant="primary">Enter platform</NeuButton>
               </Link>
               <Link href="/login">
-                <NeuButton className="px-6 py-3 text-base">Sign in (Student / Staff)</NeuButton>
+                <NeuButton>Sign in</NeuButton>
               </Link>
             </div>
 
-            <div className="mt-10 flex flex-wrap gap-8">
-              {[
-                { v: students.toLocaleString(), l: 'students monitored' },
-                { v: BLOCKS.length, l: 'hostel blocks' },
-                { v: '3 days', l: 'the gap we close' },
-              ].map((s) => (
-                <div key={s.l}>
-                  <div className="text-2xl font-bold tabular-nums text-slate-800">{s.v}</div>
-                  <div className="text-xs text-slate-500">{s.l}</div>
-                </div>
-              ))}
+            <div className="mt-10 grid grid-cols-3 gap-6 border-t border-line-light pt-6 animate-rise stagger-3">
+              <Stat label="Students" value={students.toLocaleString()} />
+              <Stat label="Blocks" value={BLOCKS.length} />
+              <Stat label="Days earlier" value="3" />
             </div>
           </div>
 
-          {/* live status card with live thermal preview */}
-          <Surface glow={report.overall} className="p-7 animate-rise stagger-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                Campus right now
-              </span>
-              <RiskBadge level={report.overall} pulse />
-            </div>
-
-            <p className="mt-4 text-lg font-semibold leading-snug text-slate-800">
-              {report.headline}
-            </p>
-
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              {[
-                { v: report.totalCases, l: 'ill' },
-                { v: report.doctorConfirmed, l: 'seen by doctor' },
-                { v: report.hotspots.length, l: 'blocks flagged' },
-              ].map((s) => (
-                <Surface inset small key={s.l} className="px-3 py-2.5 text-center">
-                  <div className="text-2xl font-bold tabular-nums text-slate-800">{s.v}</div>
-                  <div className="mt-0.5 text-[11px] leading-tight text-slate-500">{s.l}</div>
-                </Surface>
-              ))}
-            </div>
-
-            <div className="mt-5 rounded-xl overflow-hidden neu-inset p-1">
-              <CampusHeatmap
-                blocks={heatBlocks}
+          {/* Map. Roughly two thirds of the hero's visual weight, by design. */}
+          <div className="lg:col-span-8">
+            <div className="border border-line-light animate-rise stagger-1">
+              <div className="flex items-center justify-between border-b border-line-light bg-paper-bright px-4 py-2">
+                <span className="meta">Live campus field · last 72 hours</span>
+                <RiskBadge level={report.overall} pulse />
+              </div>
+              <CampusThermalMap
+                blocks={blocks}
                 hotspots={report.hotspots}
-                className="h-[220px]"
+                className="h-[380px] sm:h-[460px] lg:h-[520px]"
               />
             </div>
-
-            {report.failingWaterSources.length > 0 && (
-              <Surface inset small className="mt-4 flex items-start gap-2.5 px-4 py-3">
-                <Beaker className="mt-0.5 size-4 shrink-0 text-red-500" />
-                <div className="text-xs leading-relaxed text-slate-600">
-                  <strong className="font-semibold text-slate-800">
-                    {report.failingWaterSources[0].name}
-                  </strong>{' '}
-                  failed its last test. {report.failingWaterSources[0].notes}
-                </div>
-              </Surface>
-            )}
-
-            <Link href="/radar" className="mt-5 block">
-              <NeuButton className="w-full">See full campus radar →</NeuButton>
-            </Link>
-          </Surface>
+          </div>
         </div>
       </section>
 
-      {/* ── Judge Scan-In Section ── */}
-      <section className="mx-auto max-w-7xl px-6 py-6">
-        <Surface className="p-8 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
-          <div className="grid md:grid-cols-[1fr_auto] gap-6 items-center">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-indigo-300">
-                <Smartphone className="size-3.5" /> Mobile PWA Experience
+      {/* ═══ status band ═════════════════════════════════════════════════
+          Quiet → dense → quiet. When something is wrong this is the one solid
+          thermal block on the page, and it stops the eye cold. ═══════════ */}
+      <section className="editorial pt-10">
+        {hot && top ? (
+          <div className="panel-critical animate-rise">
+            <div className="grid gap-px sm:grid-cols-[1.6fr_1fr_1fr]">
+              <div className="p-6 sm:p-8">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-80">
+                  ■ Active cluster
+                </div>
+                <div className="mt-4 display text-[clamp(1.7rem,3.4vw,2.6rem)]">
+                  Block {top.blockName}
+                </div>
+                <p className="mt-3 max-w-lg text-[13px] leading-relaxed opacity-90">
+                  {report.headline}
+                </p>
               </div>
-              <h2 className="text-2xl font-bold">Scan to open on your phone</h2>
-              <p className="text-sm text-slate-300 max-w-xl leading-relaxed">
-                Scan with your smartphone camera to open the Student PWA. Add to Home Screen, log in as Demo Student in 1 tap, file a self-report, and receive live push alert broadcasts directly to your lock screen.
-              </p>
-              <div className="pt-2 text-xs text-indigo-200 font-mono">
-                Direct URL: https://outbreak-radar-iota.vercel.app/login
+              <div className="border-t border-white/25 p-6 sm:border-l sm:border-t-0 sm:p-8">
+                <div className="numeral text-[clamp(2.4rem,5vw,3.4rem)]">{top.cases}</div>
+                <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-80">
+                  Linked reports
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <QRCodeSVG value="https://outbreak-radar-iota.vercel.app/login" size={130} />
-              <span className="text-[11px] font-semibold text-slate-300">Scan to Open /login</span>
+              <div className="border-t border-white/25 p-6 sm:border-l sm:border-t-0 sm:p-8">
+                <div className="text-[13px] font-semibold leading-snug">
+                  {SOURCE_META[top.source].label}
+                </div>
+                <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-80">
+                  Most likely cause
+                </div>
+                <Link
+                  href="/radar"
+                  className="mt-5 inline-block border border-white px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors hover:bg-white hover:text-thermal-red"
+                >
+                  Review cluster
+                </Link>
+              </div>
             </div>
           </div>
-        </Surface>
+        ) : (
+          <div className="panel flex flex-wrap items-center justify-between gap-4 px-6 py-5 animate-rise">
+            <div className="flex items-center gap-4">
+              <RiskBadge level="normal" />
+              <span className="text-[14px] text-ink-soft">{report.headline}</span>
+            </div>
+            <span className="meta">{RISK_META.normal.blurb}</span>
+          </div>
+        )}
       </section>
 
-      {/* ── how it works ── */}
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-800">How it works</h2>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-500">
-          Nothing here asks anyone to do new work. Every input already exists on campus — it has just
-          never been in the same place at the same time.
-        </p>
+      {/* ═══ 02 — inputs ════════════════════════════════════════════════ */}
+      <section className="editorial pt-24">
+        <div className="grid gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <span className="eyebrow">02 / Where the signal comes from</span>
+            <h2 className="mt-6 display text-[clamp(1.9rem,3.6vw,2.9rem)] text-ink">
+              Nothing here
+              <br />
+              asks anyone
+              <br />
+              to do new work.
+            </h2>
+          </div>
 
-        <div className="mt-9 grid gap-5 md:grid-cols-2">
-          {STEPS.map((s, i) => (
-            <Surface
-              key={s.title}
-              press
-              className={`p-6 animate-rise stagger-${i + 1}`}
-            >
-              <span className="grid size-11 place-items-center rounded-xl neu-inset-sm text-slate-600">
-                <s.icon className="size-5" />
-              </span>
-              <h3 className="mt-4 text-base font-bold text-slate-800">{s.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.body}</p>
-            </Surface>
+          <div className="lg:col-span-8">
+            {INPUTS.map((s) => (
+              <div
+                key={s.n}
+                className="grid grid-cols-[3rem_1fr] gap-5 border-t border-line-light py-7 first:border-t-0 first:pt-0 md:grid-cols-[4rem_1fr]"
+              >
+                <span className="numeral pt-1 text-[18px] text-line">{s.n}</span>
+                <div>
+                  <h3 className="text-[16px] font-semibold text-ink">{s.t}</h3>
+                  <p className="mt-2 max-w-xl text-[14px] leading-[1.6] text-muted-ink">{s.b}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ 03 — the contrast that matters ═════════════════════════════ */}
+      <section className="editorial pt-24">
+        <span className="eyebrow">03 / What a count-threshold would do</span>
+        <div className="mt-6 grid gap-px border border-line-light bg-line-light md:grid-cols-2">
+          <div className="bg-paper-bright p-8">
+            <div className="meta">A dumb threshold</div>
+            <p className="mt-4 text-[17px] leading-[1.5] text-ink">
+              Seven reports in one block? Alert the campus.
+            </p>
+            <p className="mt-4 text-[13px] leading-relaxed text-muted-ink">
+              Seven unrelated stomach upsets land in the same block roughly once a fortnight by pure
+              chance. A system that alerts on the count alone cries wolf until nobody reads it.
+            </p>
+          </div>
+          <div className="bg-paper-bright p-8">
+            <div className="meta text-thermal-red">This system</div>
+            <p className="mt-4 text-[17px] leading-[1.5] text-ink">
+              Seven reports, but scattered across four floors and three meals. Watch, not alert.
+            </p>
+            <p className="mt-4 text-[13px] leading-relaxed text-muted-ink">
+              We ask how tightly the cases sit together compared with what chance alone produces,
+              then say so in a sentence a warden can act on — which block, how sure, what to check
+              first.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ 04 — limits ════════════════════════════════════════════════ */}
+      <section className="editorial pt-24">
+        <span className="eyebrow">04 / What this does not do</span>
+        <div className="mt-8 grid gap-10 border-t border-ink pt-8 md:grid-cols-3">
+          {LIMITS.map((x) => (
+            <div key={x.t}>
+              <h3 className="text-[15px] font-semibold text-ink">{x.t}</h3>
+              <p className="mt-2.5 text-[13px] leading-[1.6] text-muted-ink">{x.b}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ── the honest bit ── */}
-      <section className="mx-auto max-w-7xl px-6 pb-20">
-        <Surface inset className="p-9">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">
-            What this does not do
-          </h2>
-          <div className="mt-6 grid gap-7 md:grid-cols-3">
-            {[
-              {
-                t: 'It does not diagnose anyone',
-                b: 'It flags places, not people. A doctor decides what is wrong with a patient; this decides which block is worth a visit.',
-              },
-              {
-                t: 'It does not alert anyone on its own',
-                b: 'Every advisory is sent by a person. An automated warning fired off unverified reports is how you panic a campus at two in the morning.',
-              },
-              {
-                t: 'It does not track individuals',
-                b: 'Wardens see totals by block. Names and rooms stay with the health centre, and a location is never shown when only one or two people are involved.',
-              },
-            ].map((x) => (
-              <div key={x.t}>
-                <h3 className="text-sm font-bold text-slate-800">{x.t}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{x.b}</p>
-              </div>
-            ))}
+      {/* ═══ 05 — phone ═════════════════════════════════════════════════ */}
+      <section className="editorial py-24">
+        <div className="panel flex flex-wrap items-center justify-between gap-8 p-8">
+          <div className="max-w-xl">
+            <span className="eyebrow">05 / On a phone</span>
+            <h2 className="mt-5 display text-[clamp(1.5rem,3vw,2.2rem)] text-ink">
+              The student app
+            </h2>
+            <p className="mt-4 text-[14px] leading-[1.6] text-muted-ink">
+              Scan to open the student view. Add it to the home screen, sign in as the demo student,
+              file a report — and when a warden sends an advisory from the dashboard, it arrives on
+              the lock screen.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link href="/app">
+                <NeuButton>Open student app</NeuButton>
+              </Link>
+              <Link href="/login">
+                <NeuButton variant="ghost">Sign in</NeuButton>
+              </Link>
+            </div>
           </div>
-        </Surface>
+          <div className="flex flex-col items-center gap-3">
+            <div className="border border-line-light bg-white p-3">
+              <QRCodeSVG value="https://outbreak-radar-iota.vercel.app/login" size={128} />
+            </div>
+            <span className="meta">Scan to open /login</span>
+          </div>
+        </div>
       </section>
     </AppShell>
   );

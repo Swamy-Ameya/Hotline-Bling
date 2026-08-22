@@ -12,12 +12,12 @@ export default async function StudentAppLayout({ children }: { children: React.R
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return (
-    <div className="neu-page min-h-screen pb-24 md:pb-12">
+    <div className="paper-page paper-grain min-h-screen pb-20">
       {/* Top Header with Exit/Switch Action */}
       <StudentHeader session={session} unreadCount={unreadCount} />
 
       {/* Main Content Area */}
-      <main className="mx-auto max-w-2xl px-4 py-5">{children}</main>
+      <main className="relative z-10 mx-auto max-w-2xl px-4 py-6">{children}</main>
 
       {/* Fixed Bottom Tab Navigation (Mobile & Desktop) */}
       <StudentNavigation unreadCount={unreadCount} />

@@ -1,440 +1,385 @@
 'use client';
 
+/**
+ * The dashboard.
+ *
+ * It used to be eleven bordered cards in a three-column grid, all the same
+ * size, all shouting equally. This is the same information in five sections
+ * that answer, in order: what is happening, where, what to do about it, why we
+ * believe it, and what came in.
+ *
+ * Rules that shaped it: the map is the hero and everything else is quieter;
+ * a section is a rule and a heading, not a box; and colour appears only where
+ * students are ill.
+ */
+
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  Activity,
-  ArrowRight,
-  Beaker,
-  CheckCircle2,
-  ChevronRight,
-  Droplets,
-  MapPin,
-  Megaphone,
-  Smartphone,
-  Stethoscope,
-  UtensilsCrossed,
-  Layers,
-  Settings,
-} from 'lucide-react';
 import {
   ConfidencePill,
   EmptyState,
   NeuButton,
   RiskBadge,
-  SectionTitle,
   Stat,
-  Surface,
+  StatusMark,
   timeAgo,
 } from '@/components/neu';
-import { CampusHeatmap, type HeatBlock } from '@/components/radar/campus-heatmap';
-import { CampusSatelliteMap } from '@/components/radar/campus-satellite-map';
+import { CampusThermalMap, type MapBlock, type Ground } from '@/components/radar/campus-map';
+import { DispatchConsole } from '@/components/radar/dispatch-console';
+import { AlertLog } from '@/components/radar/alert-log';
+import { AttackRates, ChanceContrast, EpiCurve } from '@/components/radar/evidence';
 import { SOURCE_META } from '@/lib/domain/risk';
 import type { SituationReport } from '@/lib/domain/surveillance';
+import type { DispatchPlan } from '@/lib/domain/dispatch';
 import { SYMPTOM_LABEL } from '@/lib/db/types';
-import { QRCodeSVG } from '@/components/qr-code';
 
 export function RadarClient({
   report,
-  heatBlocks,
+  blocks,
+  plans,
 }: {
   report: SituationReport;
-  heatBlocks: HeatBlock[];
+  blocks: MapBlock[];
+  plans: Record<string, DispatchPlan>;
 }) {
-  const [selected, setSelected] = useState<string | null>(report.hotspots[0]?.blockId ?? null);
-  const [sending, setSending] = useState(false);
-  const [sentFor, setSentFor] = useState<string[]>([]);
-  const [showQR, setShowQR] = useState(false);
-  const [mapView, setMapView] = useState<'isometric' | 'satellite'>('isometric');
+  const [selected, setSelected] = useState<string | null>(
+    report.hotspots[0]?.blockId ?? null,
+  );
+  const [ground, setGround] = useState<Ground>('satellite');
+  // Bumped when an advisory goes out, so the log below re-reads itself and the
+  // send visibly lands somewhere rather than just clearing the button.
+  const [sendCount, setSendCount] = useState(0);
 
   const active = useMemo(
     () => report.hotspots.find((h) => h.blockId === selected) ?? report.hotspots[0] ?? null,
     [report.hotspots, selected],
   );
+  const plan = active ? plans[active.blockId] : undefined;
 
-  async function sendAdvisory(blockId: string, blockName: string, action: string) {
-    setSending(true);
-    try {
-      await fetch('/api/alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clusterId: blockId,
-          blockId,
-          floor: null,
-          title: `Health advisory — Block ${blockName}`,
-          body: `We have seen a rise in stomach illness in your block. Until further notice, please use bottled or boiled water. If you feel unwell, visit the campus health centre. ${action}`,
-        }),
-      });
-      setSentFor((s) => [...s, blockId]);
-    } finally {
-      setSending(false);
-    }
-  }
-
-  const statusTone =
+  const headlineTone =
     report.overall === 'critical'
-      ? 'text-red-600'
+      ? 'text-thermal-red'
       : report.overall === 'elevated'
-        ? 'text-orange-600'
-        : report.overall === 'watch'
-          ? 'text-amber-600'
-          : 'text-emerald-600';
+        ? 'text-thermal-orange'
+        : 'text-ink';
 
   return (
-    <div className="mx-auto max-w-7xl px-6 pb-24 pt-8">
-      {/* ── status banner ─────────────────────────────────────────────── */}
-      <Surface
-        glow={report.overall}
-        className="mb-6 overflow-hidden p-7 animate-rise"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="min-w-[280px] flex-1">
-            <div className="flex items-center gap-3">
-              <RiskBadge level={report.overall} pulse />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                Campus status · last 72 hours
-              </span>
-            </div>
+    <div className="pb-24">
+      {/* ═══ 01 — status ═══════════════════════════════════════════════ */}
+      <section className="editorial pt-8">
+        <div className="flex items-baseline justify-between gap-4 border-b border-line-light pb-3">
+          <span className="eyebrow">01 / Campus status · last 72 hours</span>
+          <span className="meta">
+            Assessed {new Date(report.generatedAt).toLocaleTimeString('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+        </div>
+
+        <div className="grid gap-6 pt-7 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <RiskBadge level={report.overall} pulse />
             <h1
-              className={`mt-3 text-2xl font-bold leading-snug tracking-tight ${statusTone}`}
+              className={`mt-4 max-w-3xl text-[clamp(1.6rem,3.2vw,2.4rem)] font-bold leading-[1.15] tracking-[-0.03em] ${headlineTone}`}
             >
               {report.headline}
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-3 text-[13px] text-muted-ink">
               Updated {timeAgo(report.generatedAt)} · monitoring{' '}
-              {report.studentsMonitored.toLocaleString()} students across 19 hostel blocks
+              <span className="tabular-nums">{report.studentsMonitored.toLocaleString()}</span>{' '}
+              students across 19 hostel blocks
             </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="rounded-xl neu-raised-sm px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5 transition-all"
-            >
-              <Smartphone className="size-4 text-indigo-600" />
-              {showQR ? 'Hide Mobile QR' : 'Judge Mobile Scan'}
-            </button>
-            <Link href="/app/report">
-              <NeuButton>Report symptoms</NeuButton>
-            </Link>
+          <div className="flex items-start justify-start gap-2 lg:col-span-4 lg:justify-end">
             <Link href="/doctor">
-              <NeuButton variant="primary" className="flex items-center gap-2">
-                <Stethoscope className="size-4" />
-                Health centre
-              </NeuButton>
+              <NeuButton>Clinic</NeuButton>
+            </Link>
+            <Link href="/app/report">
+              <NeuButton variant="primary">Report symptoms</NeuButton>
             </Link>
           </div>
         </div>
 
-        {showQR && (
-          <div className="mt-6 pt-5 border-t border-slate-200/60 flex flex-wrap items-center gap-6 bg-slate-50/50 p-4 rounded-xl">
-            <QRCodeSVG value="https://outbreak-radar-iota.vercel.app/login" size={110} />
-            <div className="space-y-1">
-              <div className="text-xs font-bold text-slate-800">Scan to test Student PWA on phone</div>
-              <p className="text-xs text-slate-500 max-w-md leading-relaxed">
-                Scan with your phone to open the student mobile view. Log in with Demo Student (`2502050001`), submit symptoms, and when the warden sends an advisory from this dashboard, watch your phone receive the notification.
-              </p>
-              <div className="text-[11px] font-mono text-indigo-600 pt-1">
-                https://outbreak-radar-iota.vercel.app/login
-              </div>
+        {/* Metrics as typography, not as four more cards. */}
+        <div className="mt-10 grid grid-cols-2 gap-px border-y border-line-light bg-line-light sm:grid-cols-4">
+          {[
+            { l: 'Reports', v: report.totalCases, h: 'Last three days', a: undefined },
+            { l: 'Seen by a doctor', v: report.doctorConfirmed, h: 'Examined at the health centre', a: undefined },
+            { l: 'Self-reported', v: report.selfReported, h: 'Filed from a phone', a: undefined },
+            {
+              l: 'Blocks flagged',
+              v: report.hotspots.length,
+              h: report.hotspots.length ? 'Select one on the map' : 'All within normal range',
+              a: report.hotspots.length ? 'text-thermal-red' : undefined,
+            },
+          ].map((s, i) => (
+            <div key={s.l} className="bg-paper px-5 py-6">
+              <Stat label={s.l} value={s.v} hint={s.h} accent={s.a} delay={i * 60} />
             </div>
-          </div>
-        )}
-      </Surface>
-
-      {/* ── stats ─────────────────────────────────────────────────────── */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label="Students ill"
-          value={report.totalCases}
-          hint="Reported in the last three days"
-          delay={0}
-        />
-        <Stat
-          label="Seen by a doctor"
-          value={report.doctorConfirmed}
-          hint="Examined at the health centre"
-          accent="text-slate-800"
-          delay={60}
-        />
-        <Stat
-          label="Self-reported"
-          value={report.selfReported}
-          hint="Filed from a student's phone"
-          delay={120}
-        />
-        <Stat
-          label="Blocks needing attention"
-          value={report.hotspots.length}
-          hint={report.hotspots.length ? 'Tap a block below' : 'Everything within normal range'}
-          accent={report.hotspots.length ? 'text-red-600' : 'text-emerald-600'}
-          delay={180}
-        />
-      </div>
-
-      {/* ── map + detail ──────────────────────────────────────────────── */}
-      <div className="mb-6 grid gap-5 lg:grid-cols-[1.55fr_1fr]">
-        <Surface className="overflow-hidden p-2 animate-rise stagger-2">
-          <div className="flex items-center justify-between px-4 pt-3 pb-2">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <MapPin className="size-4 text-slate-400" />
-              Campus Map View
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex rounded-xl neu-inset p-1 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setMapView('isometric')}
-                  className={`rounded-lg px-2.5 py-1 transition-all ${
-                    mapView === 'isometric'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  Isometric 3D
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMapView('satellite')}
-                  className={`rounded-lg px-2.5 py-1 transition-all ${
-                    mapView === 'satellite'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  Esri Satellite
-                </button>
-              </div>
-
-              <Link
-                href="/admin/map"
-                title="Calibrate Placement Coordinates"
-                className="rounded-xl neu-raised-sm p-2 text-slate-500 hover:text-slate-900 transition-colors"
-              >
-                <Settings className="size-3.5" />
-              </Link>
-            </div>
-          </div>
-
-          {mapView === 'isometric' ? (
-            <CampusHeatmap
-              blocks={heatBlocks}
-              hotspots={report.hotspots}
-              selectedId={selected}
-              onSelect={setSelected}
-              className="h-[440px]"
-            />
-          ) : (
-            <CampusSatelliteMap
-              hotspots={report.hotspots}
-              selectedId={selected}
-              onSelect={setSelected}
-              className="h-[440px]"
-            />
-          )}
-        </Surface>
-
-        <div className="animate-rise stagger-3">
-          {active ? (
-            <Surface glow={active.level} className="flex h-full flex-col p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    Needs attention
-                  </div>
-                  <h3 className="mt-1 text-3xl font-bold tracking-tight text-slate-800">
-                    Block {active.blockName}
-                  </h3>
-                </div>
-                <RiskBadge level={active.level} pulse />
-              </div>
-
-              <Surface inset small className="mt-5 px-4 py-3">
-                <div className="text-lg font-semibold tabular-nums text-slate-800">
-                  {active.comparison}
-                </div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {active.doctorConfirmed} of them were examined at the health centre
-                </div>
-              </Surface>
-
-              <p className="mt-4 text-sm leading-relaxed text-slate-600">{active.summary}</p>
-
-              <div className="mt-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Most likely cause
-                  </span>
-                  <ConfidencePill level={active.confidence} />
-                </div>
-                <Surface inset small className="flex items-start gap-3 px-4 py-3">
-                  <Droplets className="mt-0.5 size-4 shrink-0 text-slate-400" />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800">
-                      {SOURCE_META[active.source].label}
-                    </div>
-                    <div className="mt-1 text-xs leading-relaxed text-slate-500">
-                      {active.recommendedAction}
-                    </div>
-                  </div>
-                </Surface>
-              </div>
-
-              <div className="mt-auto flex gap-2 pt-6">
-                {sentFor.includes(active.blockId) ? (
-                  <div className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
-                    <CheckCircle2 className="size-4" />
-                    Advisory sent to Block {active.blockName}
-                  </div>
-                ) : (
-                  <NeuButton
-                    variant="primary"
-                    disabled={sending}
-                    onClick={() =>
-                      sendAdvisory(active.blockId, active.blockName, active.recommendedAction)
-                    }
-                    className="flex flex-1 items-center justify-center gap-2"
-                  >
-                    <Megaphone className="size-4" />
-                    {sending ? 'Sending…' : 'Send advisory'}
-                  </NeuButton>
-                )}
-                <Link href={`/radar/${active.blockId}`}>
-                  <NeuButton className="flex items-center gap-1">
-                    Details
-                    <ChevronRight className="size-4" />
-                  </NeuButton>
-                </Link>
-              </div>
-
-              <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-400">
-                Nothing is sent to students until you press this.
-              </p>
-            </Surface>
-          ) : (
-            <EmptyState
-              icon={<CheckCircle2 className="size-10 text-emerald-500" />}
-              title="Nothing needs attention"
-              body="No block is reporting more illness than usual right now. The dashboard will flag anything that changes."
-            />
-          )}
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* ── secondary panels ──────────────────────────────────────────── */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* water */}
-        <Surface className="p-6 animate-rise stagger-4">
-          <SectionTitle hint="Latest results from maintenance">Water testing</SectionTitle>
-          {report.failingWaterSources.length === 0 ? (
-            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-              <CheckCircle2 className="size-4" />
-              All tanks passed their last test
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {report.failingWaterSources.map((w) => (
-                <li key={w.sourceId}>
-                  <Surface inset small className="px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-red-700">
-                      <Beaker className="size-4" />
-                      {w.name}
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                      {w.notes ?? 'Failed its last test.'}
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-400">Tested {timeAgo(w.testedAt)}</p>
-                  </Surface>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Surface>
+      {/* ═══ 02 — the map ═════════════════════════════════════════════ */}
+      <section className="editorial pt-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line-light pb-3">
+          <span className="eyebrow">02 / Where it is concentrating</span>
+          <Link href="/admin/map" className="meta transition-colors hover:text-ink">
+            Calibrate block positions →
+          </Link>
+        </div>
 
-        {/* meals */}
-        <Surface className="p-6 animate-rise stagger-5">
-          <SectionTitle hint="Checked against normal turnout">Mess meals</SectionTitle>
-          {report.suspectMeals.length === 0 ? (
-            <p className="text-sm leading-relaxed text-slate-500">
-              No meal stands out. The students who are ill did not eat together any more often than
-              everybody else did.
+        <div className="mt-6 grid gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <CampusThermalMap
+              blocks={blocks}
+              hotspots={report.hotspots}
+              selectedId={selected}
+              onSelect={setSelected}
+              ground={ground}
+              onGroundChange={setGround}
+              className="h-[440px] border border-line-light sm:h-[540px]"
+            />
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-ink">
+              Buildings stand where they actually stand, extruded floor by floor. Height is how many
+              students live there; colour is how many are ill. Select a block to trace its water and
+              food lines.
             </p>
-          ) : (
-            <ul className="space-y-3">
-              {report.suspectMeals.map((m) => (
-                <li key={m.mealId}>
-                  <Surface inset small className="px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <UtensilsCrossed className="size-4 text-orange-500" />
-                      {m.label}
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{m.phrase}</p>
-                    <p className="mt-1.5 text-[11px] text-slate-400">{m.menuItems.join(' · ')}</p>
-                  </Surface>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Surface>
+          </div>
 
-        {/* recent cases */}
-        <Surface className="p-6 animate-rise stagger-6">
-          <SectionTitle hint="Newest first">Recent reports</SectionTitle>
-          <ul className="max-h-[300px] space-y-2 overflow-y-auto pr-1">
-            {report.recentCases.slice(0, 12).map((c) => (
-              <li
-                key={c.id}
-                className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/60"
-              >
-                <span
-                  className={`mt-1 size-2 shrink-0 rounded-full ${
-                    c.origin === 'doctor' ? 'bg-slate-700' : 'bg-slate-300'
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-slate-700">
-                      {c.blockName ? `Block ${c.blockName} · Floor ${c.floor}` : 'Day scholar'}
-                    </span>
-                    {c.prompted && (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                        after advisory
-                      </span>
-                    )}
+          {/* Focus lens: the block under inspection, and what to do about it. */}
+          <div className="lg:col-span-4">
+            {active ? (
+              <div className="border border-line-light bg-paper-bright">
+                <div className="flex items-start justify-between gap-3 border-b border-line-light px-5 py-4">
+                  <div>
+                    <div className="meta">Needs attention</div>
+                    <h3 className="mt-1.5 display text-[clamp(1.6rem,3vw,2.1rem)] text-ink">
+                      Block {active.blockName}
+                    </h3>
                   </div>
-                  <div className="truncate text-xs text-slate-500">
-                    {c.symptoms.map((s) => SYMPTOM_LABEL[s]).join(', ')}
+                  <RiskBadge level={active.level} pulse />
+                </div>
+
+                <div className="border-b border-line-light px-5 py-4">
+                  <div className="text-[15px] font-semibold leading-snug tabular-nums text-ink">
+                    {active.comparison}
+                  </div>
+                  <div className="mt-1.5 text-[11px] text-muted-ink">
+                    {active.doctorConfirmed} of them were examined at the health centre
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] text-slate-400">{timeAgo(c.onsetAt)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 flex items-center gap-2 border-t border-slate-200/70 pt-3 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-slate-700" /> Health centre
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-slate-300" /> Self-reported
-            </span>
-          </div>
-        </Surface>
-      </div>
 
-      {/* footnote about prompted reports */}
-      {report.recentCases.some((c) => c.prompted) && (
-        <Surface inset className="mt-6 flex items-start gap-3 px-5 py-4 animate-rise">
-          <Activity className="mt-0.5 size-4 shrink-0 text-slate-400" />
-          <p className="text-xs leading-relaxed text-slate-500">
-            Reports marked <strong className="font-semibold text-slate-600">after advisory</strong>{' '}
-            came from students who had already been warned. They are shown here because those
-            students still need care, but they are left out of the assessment — otherwise a warning
-            would create the very evidence used to justify the next one.
-          </p>
-        </Surface>
+                <p className="border-b border-line-light px-5 py-4 text-[13px] leading-relaxed text-ink-soft">
+                  {active.summary}
+                </p>
+
+                <div className="px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <span className="meta">Most likely cause</span>
+                    <ConfidencePill level={active.confidence} />
+                  </div>
+                  <div className="mt-3 text-[14px] font-semibold text-ink">
+                    {SOURCE_META[active.source].label}
+                  </div>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-muted-ink">
+                    {active.recommendedAction}
+                  </p>
+                </div>
+
+                <div className="border-t border-line-light px-5 py-3">
+                  <Link
+                    href={`/radar/${active.blockId}`}
+                    className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink transition-colors hover:text-thermal-red"
+                  >
+                    Floor-by-floor breakdown →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                title="Nothing needs attention"
+                body="No block is reporting more illness than usual. The map will heat up before anyone has to be told."
+              />
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ 03 — dispatch ════════════════════════════════════════════ */}
+      {active && plan && (
+        <section className="editorial pt-16">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line-light pb-3">
+            <span className="eyebrow">03 / Dispatch</span>
+            <span className="meta">Surgical, not campus-wide</span>
+          </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-8">
+              <DispatchConsole
+                plan={plan}
+                clusterId={active.blockId}
+                onSent={() => setSendCount((n) => n + 1)}
+              />
+            </div>
+            <div className="lg:col-span-4">
+              <h3 className="text-[15px] font-semibold text-ink">Why this reaches so few people</h3>
+              <p className="mt-3 text-[13px] leading-[1.6] text-muted-ink">
+                {plan.route === 'food'
+                  ? 'Meal attendance is already a card scan, so the advisory can be addressed to exactly the students who ate that sitting. Everyone who ate elsewhere — including students in the same block — is left alone, and no unaffected mess is closed.'
+                  : plan.route === 'water'
+                    ? 'The cluster sits inside one block, so the tank and the floors feeding it are the whole exposed population. Students on other floors drink from a different line and get nothing.'
+                    : 'No source is established yet, so the advisory stays at block level and says so plainly rather than implying a cause we cannot support.'}
+              </p>
+              <p className="mt-4 border-t border-line-light pt-4 text-[12px] leading-relaxed text-muted-ink">
+                Every advisory sent from here also arms the prompted-report rule: reports filed by
+                students who were warned are shown but excluded from the assessment, so a warning
+                can never manufacture the evidence for the next one.
+              </p>
+
+              <div className="mt-8">
+                <AlertLog refreshKey={sendCount} />
+              </div>
+            </div>
+          </div>
+        </section>
       )}
+
+      {/* ═══ 04 — evidence ════════════════════════════════════════════ */}
+      <section className="editorial pt-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line-light pb-3">
+          <span className="eyebrow">04 / Evidence</span>
+          <span className="meta">Timing · rate · chance</span>
+        </div>
+
+        <div className="mt-8 grid gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <EpiCurve report={report} />
+          </div>
+          <div className="lg:col-span-5">
+            <AttackRates blocks={blocks} selectedId={selected} onSelect={setSelected} />
+          </div>
+        </div>
+
+        <div className="mt-12 border-t border-ink pt-8">
+          <h3 className="display text-[clamp(1.3rem,2.6vw,2rem)] text-ink">
+            Cluster, or coincidence?
+          </h3>
+          <p className="mt-3 max-w-2xl text-[14px] leading-[1.6] text-muted-ink">
+            The same reports, run through a fixed count threshold and through this system. When the
+            two disagree, the disagreement is the whole point.
+          </p>
+          <div className="mt-6">
+            <ChanceContrast report={report} />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ 05 — log ═════════════════════════════════════════════════ */}
+      <section className="editorial pt-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line-light pb-3">
+          <span className="eyebrow">05 / Incoming</span>
+          <span className="meta">Newest first</span>
+        </div>
+
+        <div className="mt-6 grid gap-10 lg:grid-cols-12">
+          {/* operational log */}
+          <div className="min-w-0 lg:col-span-8">
+            <div className="-mx-1 overflow-x-auto px-1">
+            <table className="w-full min-w-[520px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-ink">
+                  {['Time', 'Location', 'Symptoms', 'Source'].map((h) => (
+                    <th
+                      key={h}
+                      className="pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-ink"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.recentCases.slice(0, 14).map((c) => (
+                  <tr key={c.id} className="border-b border-line-light">
+                    <td className="py-2.5 pr-3 text-[11px] tabular-nums text-muted-ink">
+                      {timeAgo(c.onsetAt)}
+                    </td>
+                    <td className="py-2.5 pr-3 text-[12px] font-medium text-ink">
+                      {c.blockName ? `${c.blockName} · Floor ${c.floor}` : 'Day scholar'}
+                      {c.prompted && (
+                        <span className="ml-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-ink">
+                          after advisory
+                        </span>
+                      )}
+                    </td>
+                    <td className="max-w-[220px] truncate py-2.5 pr-3 text-[11px] text-muted-ink">
+                      {c.symptoms.map((s) => SYMPTOM_LABEL[s]).join(', ')}
+                    </td>
+                    <td className="py-2.5">
+                      <StatusMark
+                        label={c.origin === 'doctor' ? 'Verified' : 'Self'}
+                        tone={c.origin === 'doctor' ? 'ok' : 'neutral'}
+                        square={c.origin === 'doctor'}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+
+            {report.recentCases.some((c) => c.prompted) && (
+              <p className="mt-4 max-w-2xl text-[11px] leading-relaxed text-muted-ink">
+                Rows marked <strong className="font-semibold text-ink-soft">after advisory</strong>{' '}
+                came from students who had already been warned. They still need care, so they are
+                listed — but they are left out of the assessment, because otherwise a warning would
+                create the very evidence used to justify the next one.
+              </p>
+            )}
+          </div>
+
+          {/* supply checks — water tests and suspect meals, as one list */}
+          <div className="lg:col-span-4">
+            <span className="meta">Supply checks</span>
+
+            <div className="mt-4">
+              {report.failingWaterSources.length === 0 && report.suspectMeals.length === 0 && (
+                <p className="text-[13px] leading-relaxed text-muted-ink">
+                  Every tank passed its last test, and no meal stands out. The students who are ill
+                  did not eat together any more often than everybody else did.
+                </p>
+              )}
+
+              {report.failingWaterSources.map((w) => (
+                <div key={w.sourceId} className="border-b border-line-light py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] font-semibold text-thermal-red">{w.name}</span>
+                    <StatusMark label="Failed" tone="critical" square />
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-ink">
+                    {w.notes ?? 'Failed its last test.'} · tested {timeAgo(w.testedAt)}
+                  </p>
+                </div>
+              ))}
+
+              {report.suspectMeals.map((m) => (
+                <div key={m.mealId} className="border-b border-line-light py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] font-semibold text-ink">{m.label}</span>
+                    <StatusMark label="Review" tone="watch" />
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-ink">{m.phrase}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.1em] text-line">
+                    {m.menuItems.join(' · ')}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

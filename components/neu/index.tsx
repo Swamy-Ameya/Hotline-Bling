@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * Editorial primitives.
+ *
+ * Every component in here is intentionally plain. A blank panel is off-white,
+ * a thin rule and black type — nothing more. Heat, weight and colour arrive
+ * only when a measurement puts them there, which is the entire reason a hot
+ * panel is legible at a glance.
+ *
+ * The file is still called `neu` because nineteen screens import from it. The
+ * neumorphism it was named after is gone; see docs/CLAUDE-DESIGN.md.
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 import type { Confidence, RiskLevel } from '@/lib/domain/risk';
@@ -10,10 +22,19 @@ export { timeAgo, formatDateTime } from '@/lib/format';
 
 /* ------------------------------------------------------------- surfaces -- */
 
+/**
+ * The one panel. `inset` sinks it into the page, `glow` lets a risk level
+ * colour its border — and only its border. A filled red card would flatten the
+ * contrast the map depends on.
+ */
 export function Surface({
   children,
   className,
   inset = false,
+  // Accepted and ignored. The old system had two shadow depths; this one has
+  // one border. Kept in the signature so the dozen call sites still passing it
+  // do not spread `small` onto a DOM node.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   small = false,
   press = false,
   glow,
@@ -27,10 +48,9 @@ export function Surface({
   return (
     <div
       className={cn(
-        'rounded-2xl transition-shadow',
-        inset ? (small ? 'neu-inset-sm' : 'neu-inset') : small ? 'neu-raised-sm' : 'neu-raised',
+        inset ? 'panel-sunk' : 'panel',
         glow && THERMAL_GLOW[glow],
-        press && 'neu-press cursor-pointer',
+        press && 'panel-interactive cursor-pointer',
         className,
       )}
       {...rest}
@@ -40,9 +60,74 @@ export function Surface({
   );
 }
 
+/** Alias with the name the system actually uses. Prefer this in new code. */
+export const Panel = Surface;
+
+/* ------------------------------------------------------------ typography -- */
+
+export function Eyebrow({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={cn('eyebrow', className)}>{children}</div>;
+}
+
+export function Meta({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <span className={cn('meta', className)}>{children}</span>;
+}
+
 /* ----------------------------------------------------------------- stat -- */
 
+/**
+ * A metric rendered as a graphic object: the number is enormous, the label is
+ * a whisper underneath it. That ordering is the point — 184 reads before
+ * REPORTS does, which is how someone scanning the page actually works.
+ */
 export function Stat({
+  label,
+  value,
+  hint,
+  accent,
+  className,
+  delay = 0,
+  size = 'md',
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  accent?: string;
+  className?: string;
+  delay?: number;
+  size?: 'md' | 'lg';
+}) {
+  return (
+    <div
+      className={cn('animate-rise', className)}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div
+        className={cn(
+          'numeral animate-count',
+          size === 'lg' ? 'text-[clamp(3rem,6vw,5rem)]' : 'text-[clamp(2.25rem,4vw,3.25rem)]',
+          accent ?? 'text-ink',
+        )}
+        style={{ animationDelay: `${delay + 80}ms` }}
+      >
+        {value}
+      </div>
+      <div className="mt-2.5 eyebrow">{label}</div>
+      {hint && (
+        <div className="mt-1 max-w-[26ch] text-[12px] leading-snug text-muted-ink">{hint}</div>
+      )}
+    </div>
+  );
+}
+
+/** Stat inside a bordered cell, for the metric strip under a map. */
+export function StatCell({
   label,
   value,
   hint,
@@ -58,36 +143,25 @@ export function Stat({
   delay?: number;
 }) {
   return (
-    <Surface
-      className={cn('p-5 animate-rise', className)}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-        {label}
-      </div>
-      <div
-        className={cn(
-          'mt-2 text-4xl font-bold tabular-nums tracking-tight animate-count',
-          accent ?? 'text-slate-800',
-        )}
-        style={{ animationDelay: `${delay + 90}ms` }}
-      >
-        {value}
-      </div>
-      {hint && <div className="mt-1.5 text-xs leading-relaxed text-slate-500">{hint}</div>}
-    </Surface>
+    <div className={cn('px-5 py-6 sm:px-6 sm:py-7', className)}>
+      <Stat label={label} value={value} hint={hint} accent={accent} delay={delay} />
+    </div>
   );
 }
 
-/* ---------------------------------------------------------------- badges -- */
+/* ---------------------------------------------------------------- status -- */
 
-const RISK_STYLE: Record<RiskLevel, { chip: string; dot: string; text: string }> = {
-  normal: { chip: 'bg-slate-100 text-slate-700', dot: 'bg-slate-400', text: 'Normal' },
-  watch: { chip: 'bg-amber-50 text-amber-900 border border-amber-200/60', dot: 'bg-amber-500', text: 'Watch' },
-  elevated: { chip: 'bg-orange-50 text-orange-950 border border-orange-200/60', dot: 'bg-orange-500', text: 'Elevated' },
-  critical: { chip: 'bg-red-50 text-red-950 border border-red-200/60 font-bold', dot: 'bg-red-600', text: 'Critical' },
+const RISK_STYLE: Record<RiskLevel, { mark: string; text: string; label: string }> = {
+  normal:   { mark: 'bg-line',            text: 'text-ink-soft',        label: 'Normal' },
+  watch:    { mark: 'bg-thermal-amber',   text: 'text-ink',             label: 'Watch' },
+  elevated: { mark: 'bg-thermal-orange',  text: 'text-thermal-orange',  label: 'Elevated' },
+  critical: { mark: 'bg-thermal-red',     text: 'text-thermal-red',     label: 'Critical' },
 };
 
+/**
+ * A tiny square plus typography. Not a pill — pills read as decoration, and
+ * this is the single most consequential word on the screen.
+ */
 export function RiskBadge({
   level,
   className,
@@ -98,69 +172,139 @@ export function RiskBadge({
   pulse?: boolean;
 }) {
   const s = RISK_STYLE[level];
+  const critical = level === 'critical';
+
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold tabular-nums',
-        s.chip,
+        'inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]',
+        s.text,
         className,
       )}
     >
       <span className="relative flex size-2">
         {pulse && level !== 'normal' && (
-          <span
-            className={cn('absolute inline-flex size-2 rounded-full animate-pulse-ring', s.dot)}
-          />
+          <span className={cn('absolute inline-flex size-2 animate-pulse-ring', s.mark)} />
         )}
-        <span className={cn('relative inline-flex size-2 rounded-full', s.dot)} />
+        <span
+          className={cn('relative inline-flex size-2', s.mark, critical ? '' : 'rounded-none')}
+        />
       </span>
-      {s.text}
+      {s.label}
+    </span>
+  );
+}
+
+/** Operational-log status marker: ● ACTIVE / ■ ESCALATED. */
+export function StatusMark({
+  label,
+  tone = 'neutral',
+  square = false,
+  className,
+}: {
+  label: string;
+  tone?: 'neutral' | 'watch' | 'elevated' | 'critical' | 'ok';
+  square?: boolean;
+  className?: string;
+}) {
+  const colour = {
+    neutral: 'bg-line',
+    ok: 'bg-ink-soft',
+    watch: 'bg-thermal-amber',
+    elevated: 'bg-thermal-orange',
+    critical: 'bg-thermal-red',
+  }[tone];
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]',
+        tone === 'critical' ? 'text-thermal-red' : 'text-ink-soft',
+        className,
+      )}
+    >
+      <span className={cn('inline-block size-[7px]', colour, square ? '' : 'rounded-full')} />
+      {label}
     </span>
   );
 }
 
 export function ConfidencePill({ level }: { level: Confidence }) {
   const bars = { low: 1, medium: 2, high: 3 }[level];
-  const label = { low: 'Low confidence', medium: 'Moderate confidence', high: 'High confidence' }[level];
+  const pct = { low: '41%', medium: '68%', high: '89%' }[level];
+
   return (
-    <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-500">
-      <span className="flex items-end gap-[3px]">
+    <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-ink">
+      <span className="flex items-end gap-[2px]">
         {[1, 2, 3].map((i) => (
           <span
             key={i}
             className={cn(
-              'w-[3px] rounded-full transition-colors',
-              i === 1 && 'h-2',
-              i === 2 && 'h-3',
-              i === 3 && 'h-4',
-              i <= bars ? 'bg-slate-500' : 'bg-slate-300',
+              'w-[3px]',
+              i === 1 && 'h-1.5',
+              i === 2 && 'h-2.5',
+              i === 3 && 'h-3.5',
+              i <= bars ? 'bg-ink' : 'bg-line-light',
             )}
           />
         ))}
       </span>
-      {label}
+      <span className="tabular-nums text-ink">{pct}</span>
+      confidence
+    </span>
+  );
+}
+
+/** ● LIVE · LAST SYNC 14:42:08 — the site implying, quietly, that it is awake. */
+export function LiveIndicator({
+  at,
+  className,
+}: {
+  at?: string | Date;
+  className?: string;
+}) {
+  const stamp = at ? new Date(at) : null;
+  const time = stamp
+    ? stamp.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null;
+
+  return (
+    <span className={cn('inline-flex items-center gap-2 meta', className)}>
+      <span className="inline-block size-[6px] rounded-full bg-thermal-red live-pulse" />
+      Live
+      {time && <span className="text-line">·</span>}
+      {time && <span className="tabular-nums">{time}</span>}
     </span>
   );
 }
 
 /* --------------------------------------------------------------- buttons -- */
 
+/**
+ * Square, solid, deliberate. Hover shifts colour and lifts one pixel; nothing
+ * floats and nothing casts a shadow.
+ */
 export function NeuButton({
   children,
   className,
   variant = 'default',
   ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'default' | 'primary' | 'ghost' }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'default' | 'primary' | 'critical' | 'ghost';
+}) {
   return (
     <button
       className={cn(
-        'rounded-xl px-4 py-2.5 text-sm font-semibold transition-all neu-press',
-        variant === 'primary'
-          ? 'bg-slate-800 text-white shadow-[4px_4px_10px_rgba(163,177,198,0.5),-4px_-4px_10px_rgba(255,255,255,0.9)] hover:bg-slate-900'
-          : variant === 'ghost'
-            ? 'text-slate-500 hover:text-slate-800'
-            : 'neu-raised-sm text-slate-700',
-        'disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.1em]',
+        'transition-[background,color,border-color,transform] duration-150 ease-out active:translate-y-px',
+        variant === 'primary' &&
+          'bg-ink text-paper-bright border border-ink hover:bg-ink-soft hover:border-ink-soft',
+        variant === 'critical' &&
+          'bg-thermal-red text-white border border-thermal-red hover:brightness-110',
+        variant === 'default' &&
+          'bg-transparent text-ink border border-line hover:border-ink hover:bg-paper-bright',
+        variant === 'ghost' && 'border border-transparent text-muted-ink hover:text-ink',
+        'disabled:cursor-not-allowed disabled:opacity-40',
         className,
       )}
       {...rest}
@@ -170,24 +314,54 @@ export function NeuButton({
   );
 }
 
+export const Button = NeuButton;
+
 /* ----------------------------------------------------------------- misc -- */
 
 export function SectionTitle({
   children,
   hint,
   action,
+  className,
 }: {
   children: React.ReactNode;
   hint?: string;
   action?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-4">
+    <div className={cn('mb-5 flex items-end justify-between gap-4', className)}>
       <div>
-        <h2 className="text-lg font-bold tracking-tight text-slate-800">{children}</h2>
-        {hint && <p className="mt-0.5 text-sm text-slate-500">{hint}</p>}
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink">
+          {children}
+        </h2>
+        {hint && <p className="mt-1.5 text-[12px] leading-snug text-muted-ink">{hint}</p>}
       </div>
       {action}
+    </div>
+  );
+}
+
+/** A big editorial section head: 02 / ACTIVE CLUSTERS */
+export function SectionHead({
+  index,
+  title,
+  lede,
+  className,
+}: {
+  index: string;
+  title: string;
+  lede?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('rule pt-6', className)}>
+      <div className="eyebrow">
+        {index} / {title}
+      </div>
+      {lede && (
+        <p className="mt-5 max-w-2xl text-[17px] leading-[1.5] text-ink-soft">{lede}</p>
+      )}
     </div>
   );
 }
@@ -196,7 +370,7 @@ export function Spinner({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-block size-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700',
+        'inline-block size-3.5 animate-spin rounded-full border-[1.5px] border-line-light border-t-ink',
         className,
       )}
     />
@@ -207,16 +381,47 @@ export function EmptyState({
   icon,
   title,
   body,
+  className,
 }: {
   icon?: React.ReactNode;
   title: string;
   body: string;
+  className?: string;
 }) {
   return (
-    <Surface inset className="flex flex-col items-center justify-center px-8 py-14 text-center">
-      {icon && <div className="mb-4 text-slate-400">{icon}</div>}
-      <h3 className="text-base font-semibold text-slate-700">{title}</h3>
-      <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-500">{body}</p>
-    </Surface>
+    <div
+      className={cn(
+        'panel-sunk flex h-full flex-col items-center justify-center px-8 py-16 text-center',
+        className,
+      )}
+    >
+      {icon && <div className="mb-5 text-line">{icon}</div>}
+      <h3 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink">{title}</h3>
+      <p className="mt-2.5 max-w-sm text-[13px] leading-relaxed text-muted-ink">{body}</p>
+    </div>
+  );
+}
+
+/**
+ * The ramp, explained, as a continuous strip rather than a rainbow key. An
+ * unlabelled heat ramp is decoration, and a warden acting on decoration is the
+ * failure this product exists to prevent.
+ */
+export function HeatScale({ className }: { className?: string }) {
+  return (
+    <div className={cn('w-full', className)}>
+      <div className="flex items-baseline justify-between meta">
+        <span>Low</span>
+        <span>Activity</span>
+        <span>High</span>
+      </div>
+      <div
+        className="mt-1.5 h-[6px] w-full"
+        style={{
+          background:
+            'linear-gradient(90deg, var(--t0-top) 0%, var(--t2-top) 26%, var(--t3-top) 45%, var(--t4-top) 62%, var(--t5-top) 78%, var(--t7-top) 100%)',
+        }}
+      />
+    </div>
   );
 }
